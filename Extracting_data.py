@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import time
 
-API_KEY = 'RGAPI-16114d75-2b98-491c-ac68-e87cfbb9909f'
+API_KEY = 'Jouw API key'
 REGION = 'euw1'
 
 MAX_PUUIDS = 5
