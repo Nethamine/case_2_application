@@ -1,70 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-tier = st.selectbox("Selecteer een tier", ["Challenger", "Grandmaster", "Master"])
-df = pd.read_csv(f"{tier.lower()}_matches_useful.csv")
+
 st.title("League data vergeijking")
-# Functie voor counterpick stats
-def get_counterpick_stats(df):
-    counter_data = []
-    for match_id, match_group in df.groupby('match_id'):
-        for role in match_group['teamPosition'].unique():
-            role_group = match_group[match_group['teamPosition'] == role]
-            if len(role_group['teamId'].unique()) != 2:
-                continue
-            teams = role_group.groupby('teamId')
-            team1 = teams.get_group(list(teams.groups.keys())[0])
-            team2 = teams.get_group(list(teams.groups.keys())[1])
 
-            champ1 = team1.iloc[0]['championName']
-            champ2 = team2.iloc[0]['championName']
-            win1 = team1.iloc[0]['win']
-            win2 = team2.iloc[0]['win']
-
-            counter_data.append({'champion': champ1, 'vs': champ2, 'win': win1})
-            counter_data.append({'champion': champ2, 'vs': champ1, 'win': win2})
-
-    counter_df = pd.DataFrame(counter_data)
-    counter_stats = counter_df.groupby(['champion', 'vs'])['win'].mean().reset_index()
-    return counter_stats
 tab1, tab2, tab3 = st.tabs(["Tab 1", "Tab 2", "Tab 3"])
-# ---- Tab 2: Counterpick winrate zonder Plotly ----
-with tab1:
-    st.header("Counterpick winrate per role")
-    counter_stats = get_counterpick_stats(df)
-    roles = df['teamPosition'].unique()
-    selected_role = st.selectbox("Selecteer rol", roles)
-    
-    # Filter champions in deze rol
-    champs_in_role = df[df['teamPosition'] == selected_role]['championName'].unique()
-    counter_filtered = counter_stats[
-        counter_stats['champion'].isin(champs_in_role) & counter_stats['vs'].isin(champs_in_role)
-    ]
-    
-    # Check op lege data
-    if counter_filtered.empty:
-        st.warning("Geen data beschikbaar voor deze rol / selectie")
-    else:
-        # Pivot voor heatmap
-        pivot_df = counter_filtered.pivot(index='champion', columns='vs', values='win').fillna(0)
 
-        # Plotten met seaborn
-        fig, ax = plt.subplots(figsize=(10,8))
-        sns.heatmap(
-            pivot_df,
-            annot=True,
-            fmt=".2f",
-            cmap="RdBu_r",
-            center=0.5,
-            linewidths=.5,
-            cbar_kws={'label': 'Winrate'}
-        )
-        ax.set_xlabel("Versus")
-        ax.set_ylabel("Champion")
-        ax.set_title(f"Counterpick Winrate - {selected_role}")
-        st.pyplot(fig)
+with tab1: 
+    st.write('Tab 1')
 
 with tab2:
     st.write('Tab 2')
