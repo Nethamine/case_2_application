@@ -1,17 +1,20 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
+from PIL import Image
 
-st.title("League data vergeijking")
+st.title("League of Legends High Elo Dashboard")
 
-tab1, tab2, tab3 = st.tabs(["Tab 1", "Tab 2", "Tab 3"])
+tier = st.selectbox("Selecteer tier", ["Challenger", "Master", "Grandmaster"])
+role = st.selectbox("Selecteer rol voor counterpick heatmap", ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"])
 
-with tab1: 
-    st.write('Tab 1')
+# Winrate plot
+winrate_img = Image.open(f"plots/winrate_{tier}.png")
+st.image(winrate_img, caption=f"Winrate per Champion - {tier}")
 
-with tab2:
-    st.write('Tab 2')
-
-with tab3:
-    st.write('Tab 3')
+# Counterpick heatmap
+counter_img_path = f"plots/counterpick_{tier}_{role}.png"
+try:
+    counter_img = Image.open(counter_img_path)
+    st.image(counter_img, caption=f"Counterpick Winrate - {role} - {tier}")
+except FileNotFoundError:
+    st.warning("Geen counterpick data beschikbaar voor deze selectie")
 
