@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import time
 
-API_KEY = 'Jouw API key'
+API_KEY = 'RGAPI-1470b823-c019-4a72-818a-ab9af4003f20'
 REGION = 'euw1'
 
 MAX_PUUIDS = 5
@@ -29,12 +29,14 @@ def rate_limit_sleep():
     if requests_counter >= REQUESTS_PER_2_MIN:
         sleep_time = max(0, 120 - elapsed_2min)
         if sleep_time > 0:
+            print(f"Rate limit bereikt. Wachten {int(sleep_time)} seconden...")
             time.sleep(sleep_time)
         requests_counter = 0
         start_time_2min = time.time()
     time.sleep(1 / REQUESTS_PER_SECOND)
 
 def get_league_puuids(api_key, region, tier, queue='RANKED_SOLO_5x5', max_puuids=None):
+    print(f"\nOphalen van {tier} spelers...")
     url = f"https://{region}.api.riotgames.com/lol/league/v4/{tier}/by-queue/{queue}"
     headers = {"X-Riot-Token": api_key}
     while True:
@@ -44,10 +46,13 @@ def get_league_puuids(api_key, region, tier, queue='RANKED_SOLO_5x5', max_puuids
             puuids = [entry['puuid'] for entry in data['entries']]
             if max_puuids:
                 puuids = puuids[:max_puuids]
+            print(f"{len(puuids)} spelers opgehaald uit {tier}")
             return puuids
         elif resp.status_code == 429:
+            print("Rate limit bij league endpoint. Wachten 10 seconden...")
             time.sleep(10)
         else:
+            print(f"Fout bij ophalen {tier}: {resp.status_code}")
             return []
 
 def get_match_ids(puuid, api_key, region='europe', count=20):
@@ -57,10 +62,14 @@ def get_match_ids(puuid, api_key, region='europe', count=20):
     while True:
         resp = requests.get(url, headers=headers)
         if resp.status_code == 200:
-            return resp.json()
+            match_ids = resp.json()
+            print(f"{len(match_ids)} matches gevonden voor speler {puuid[:6]}...")
+            return match_ids
         elif resp.status_code == 429:
+            print("Rate limit bij match ID endpoint. Wachten 10 seconden...")
             time.sleep(10)
         else:
+            print(f"Fout bij ophalen matches voor {puuid[:6]}: {resp.status_code}")
             return []
 
 def get_match_details(match_id, api_key):
@@ -70,26 +79,40 @@ def get_match_details(match_id, api_key):
     while True:
         resp = requests.get(url, headers=headers)
         if resp.status_code == 200:
+            print(f"Match data opgehaald: {match_id}")
             return resp.json()
         elif resp.status_code == 429:
+            print("Rate limit bij match details. Wachten 10 seconden...")
             time.sleep(10)
         else:
+            print(f"Fout bij match {match_id}: {resp.status_code}")
             return None
 
 def collect_tier_data(tier_name, tier_endpoint):
+    print(f"\n========== START {tier_name.upper()} ==========")
     puuids = get_league_puuids(API_KEY, REGION, tier_endpoint, max_puuids=MAX_PUUIDS)
     all_participants = []
     seen_matches = set()
+    total_matches = 0
 
-    for puuid in puuids:
+    for i, puuid in enumerate(puuids, 1):
+        print(f"\n{tier_name} speler {i}/{len(puuids)} ({puuid[:6]}...)")
         match_ids = get_match_ids(puuid, API_KEY, count=MATCHS_PER_PUUID)
-        for mid in match_ids:
+
+        for j, mid in enumerate(match_ids, 1):
             if mid in seen_matches:
+                print(f"Match {mid} al verwerkt, overslaan.")
                 continue
+
+            print(f"Verwerken match {j}/{len(match_ids)} voor speler {puuid[:6]}...")
             seen_matches.add(mid)
             match_data = get_match_details(mid, API_KEY)
+
             if match_data:
+                total_matches += 1
                 participants = match_data.get('info', {}).get('participants', [])
+                print(f"{len(participants)} participants toegevoegd uit match {mid}")
+
                 for p in participants:
                     p_flat = pd.json_normalize(p)
                     p_flat['match_id'] = mid
@@ -100,8 +123,16 @@ def collect_tier_data(tier_name, tier_endpoint):
     df = pd.concat(all_participants, ignore_index=True) if all_participants else pd.DataFrame()
     filename = f"{tier_name.lower()}_matches_useful.csv"
     df.to_csv(filename, index=False)
+
+    print(f"\n{tier_name} klaar.")
+    print(f"Totaal unieke matches: {total_matches}")
+    print(f"Totaal rows in dataset: {len(df)}")
+    print(f"Bestand opgeslagen als: {filename}")
+
     return df
 
 df_challenger = collect_tier_data("Challenger", "challengerleagues")
 df_master = collect_tier_data("Master", "masterleagues")
 df_grandmaster = collect_tier_data("Grandmaster", "grandmasterleagues")
+
+print("\nAlle tiers succesvol verwerkt.")
