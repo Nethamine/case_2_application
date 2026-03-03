@@ -29,17 +29,18 @@ def rate_limit_sleep():
     if requests_counter >= REQUESTS_PER_2_MIN:
         sleep_time = max(0, 120 - elapsed_2min)
         if sleep_time > 0:
-            print(f"Rate limit bereikt. Wachten {int(sleep_time)} seconden...")
+            print(f"Rate limit 100/2min bereikt, wachten {int(sleep_time)} seconden...")
             time.sleep(sleep_time)
         requests_counter = 0
         start_time_2min = time.time()
     time.sleep(1 / REQUESTS_PER_SECOND)
 
-def get_league_puuids(api_key, region, tier, queue='RANKED_SOLO_5x5', max_puuids=None):
+def get_league_puuids(api_key, region, tier, queue='RANKED_SOLO_5x5', max_puuids=None, max_retries=3):
     print(f"\nOphalen van {tier} spelers...")
     url = f"https://{region}.api.riotgames.com/lol/league/v4/{tier}/by-queue/{queue}"
     headers = {"X-Riot-Token": api_key}
-    while True:
+    retries = 0
+    while retries < max_retries:
         resp = requests.get(url, headers=headers)
         if resp.status_code == 200:
             data = resp.json()
@@ -54,12 +55,15 @@ def get_league_puuids(api_key, region, tier, queue='RANKED_SOLO_5x5', max_puuids
         else:
             print(f"Fout bij ophalen {tier}: {resp.status_code}")
             return []
+        retries += 1
+    return []
 
-def get_match_ids(puuid, api_key, region='europe', count=20):
+def get_match_ids(puuid, api_key, region='europe', count=20, max_retries=3):
     rate_limit_sleep()
     url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}"
     headers = {"X-Riot-Token": api_key}
-    while True:
+    retries = 0
+    while retries < max_retries:
         resp = requests.get(url, headers=headers)
         if resp.status_code == 200:
             match_ids = resp.json()
@@ -71,12 +75,15 @@ def get_match_ids(puuid, api_key, region='europe', count=20):
         else:
             print(f"Fout bij ophalen matches voor {puuid[:6]}: {resp.status_code}")
             return []
+        retries += 1
+    return []
 
-def get_match_details(match_id, api_key):
+def get_match_details(match_id, api_key, max_retries=3):
     rate_limit_sleep()
     url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}"
     headers = {"X-Riot-Token": api_key}
-    while True:
+    retries = 0
+    while retries < max_retries:
         resp = requests.get(url, headers=headers)
         if resp.status_code == 200:
             print(f"Match data opgehaald: {match_id}")
@@ -87,6 +94,8 @@ def get_match_details(match_id, api_key):
         else:
             print(f"Fout bij match {match_id}: {resp.status_code}")
             return None
+        retries += 1
+    return None
 
 def collect_tier_data(tier_name, tier_endpoint):
     print(f"\n========== START {tier_name.upper()} ==========")
@@ -115,9 +124,9 @@ def collect_tier_data(tier_name, tier_endpoint):
 
                 for p in participants:
                     p_flat = pd.json_normalize(p)
+                    p_flat = p_flat.reindex(columns=useful_columns)  # ontbrekende kolommen vullen met NaN
                     p_flat['match_id'] = mid
                     p_flat['tier'] = tier_name
-                    p_flat = p_flat[[c for c in useful_columns if c in p_flat.columns] + ['match_id', 'tier']]
                     all_participants.append(p_flat)
 
     df = pd.concat(all_participants, ignore_index=True) if all_participants else pd.DataFrame()
