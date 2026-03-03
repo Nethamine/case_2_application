@@ -31,6 +31,26 @@ tab1, tab2, tab3 = st.tabs(["Tab 1", "Tab 2", "Tab 3"])
 
 with tab1: 
     st.write('Tab 1')
+    st.header("Counterpick winrate per role")
+    counter_stats = get_counterpick_stats(df)
+    roles = df['teamPosition'].unique()
+    selected_role = st.selectbox("Selecteer rol", roles)
+    
+    # Filter champions in deze rol
+    champs_in_role = df[df['teamPosition'] == selected_role]['championName'].unique()
+    counter_filtered = counter_stats[
+        counter_stats['champion'].isin(champs_in_role) & counter_stats['vs'].isin(champs_in_role)
+    ]
+    
+    # Pivot voor heatmap
+    pivot_df = counter_filtered.pivot(index='champion', columns='vs', values='win').fillna(0)
+    fig2 = px.imshow(
+        pivot_df,
+        text_auto=True,
+        color_continuous_scale='RdBu_r',
+        title=f'Counterpick winrate - {selected_role}'
+    )
+    st.plotly_chart(fig)
 
 with tab2:
     st.write('Tab 2')
