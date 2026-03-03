@@ -10,7 +10,7 @@ with tab1:
     st.write('Tab 1')
 
 with tab2:
-    st.write('Tab 2')
+    st.write('Tab 22')
 
 with tab3:
     st.write('Tab 3')
