@@ -34,8 +34,7 @@ with st.sidebar:
             min_value=min_dur, max_value=max_dur,
             value=(min_dur, max_dur), step=1
         )
-        champ_counts = df_all['championName'].value.counts()
-        alle_champs = sorted(champ_counts[champ_counts >= 10 ].index.tolist())
+        alle_champs = sorted(df_all['championName'].dropna().unique().tolist())
         selected_champs = st.multiselect("Filter op Champion(s)", options=alle_champs, default=[])
     else:
         duration_range = None
