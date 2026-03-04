@@ -32,6 +32,10 @@ df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else
 # --- TABS ---
 tab1, tab2, tab3 = st.tabs(["Winrate per Champion", "Games gespeeld per Champion", "KDA per Champion"])
 
+if not selected_tiers:
+    st.warning("⚠️ Selecteer minimaal één tier in de sidebar om data te bekijken.")
+    st.stop()
+
 with tab1:
     if selected_analyse == "Winrate per Champion":
         st.subheader("Winrate per Champion")
