@@ -1,34 +1,80 @@
-import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 
 df_chal = pd.read_csv("challenger_matches_useful.csv")
 df_gm = pd.read_csv("grandmaster_matches_useful.csv")
 df_m = pd.read_csv("master_matches_useful.csv")
 
-df_all = pd.concat([df_chal,df_gm, df_m], ignore_index=True)
+df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
 
-# CODE VANAF HIER
-
-
-
-st.title("League data vergeijking")
-
+# --- SIDEBAR ---
+st.title("League Data Dashboard")
 
 with st.sidebar:
     st.header("Filters")
-    selected_atribute = st.selectbox("Kies Rank/Tier", df_all['tier'].unique())
 
-tab1, tab2, tab3 = st.tabs(["Winrate vs Champ ", "Rank vs Champ gespeelt", "Tab 3"])
+    analyse_opties = {
+        "Winrate per Champion": "winrate",
+        "Games gespeeld per Champion": "games_played",
+        "KDA per Champion": "kda",
+    }
+    selected_analyse = st.selectbox("Kies analyse", list(analyse_opties.keys()))
 
-with tab1: 
-    st.write('Tab 1')
+    alle_tiers = sorted(df_all['tier'].dropna().unique().tolist())
+    selected_tiers = st.multiselect(
+        "Kies Tier(s)/Rank(s)",
+        options=alle_tiers,
+        default=alle_tiers  # standaard alles geselecteerd
+    )
+
+# Filter df op geselecteerde tiers
+df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
+
+# --- TABS ---
+tab1, tab2, tab3 = st.tabs(["Winrate per Champion", "Games gespeeld per Champion", "Tab 3"])
+
+with tab1:
+    if selected_analyse == "Winrate per Champion":
+        st.subheader("Winrate per Champion")
+        if 'championName' in df_filtered.columns and 'win' in df_filtered.columns:
+            winrate_df = (
+                df_filtered.groupby('championName')['win']
+                .mean()
+                .reset_index()
+                .rename(columns={'win': 'winrate'})
+                .sort_values('winrate', ascending=False)
+            )
+            winrate_df['winrate'] = (winrate_df['winrate'] * 100).round(1)
+            fig = px.bar(winrate_df, x='championName', y='winrate',
+                         title=f"Winrate per Champion ({', '.join(selected_tiers)})",
+                         labels={'winrate': 'Winrate (%)', 'championName': 'Champion'},
+                         color='winrate', color_continuous_scale='RdYlGn')
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Kolommen 'championName' of 'win' niet gevonden in de data.")
+    else:
+        st.info("Selecteer 'Winrate per Champion' in de sidebar om deze tab te gebruiken.")
 
 with tab2:
-    st.write('Tab 22')
+    if selected_analyse == "Games gespeeld per Champion":
+        st.subheader("Games gespeeld per Champion")
+        if 'championName' in df_filtered.columns:
+            games_df = (
+                df_filtered.groupby('championName')
+                .size()
+                .reset_index(name='games_played')
+                .sort_values('games_played', ascending=False)
+            )
+            fig = px.bar(games_df, x='championName', y='games_played',
+                         title=f"Games gespeeld per Champion ({', '.join(selected_tiers)})",
+                         labels={'games_played': 'Aantal Games', 'championName': 'Champion'},
+                         color='games_played', color_continuous_scale='Blues')
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Kolom 'championName' niet gevonden in de data.")
+    else:
+        st.info("Selecteer 'Games gespeeld per Champion' in de sidebar om deze tab te gebruiken.")
 
 with tab3:
-    st.write('Tab 3')
-
+    st.write("Tab 3 – nog in te vullen") 
