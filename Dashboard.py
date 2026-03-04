@@ -276,7 +276,7 @@ elif selected_analyse == "Gold & Minions vs Winrate":
             bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
             bucket_df['minions'] = bucket_df['minions'].round(1)
             uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
-            bucket_df = bucket_df[bucket_df['games'] >= min_sample]
+            bucket_df = bucket_df[bucket_df['games'] >= 10]
 
             if uitgesloten2 > 0:
                 st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
