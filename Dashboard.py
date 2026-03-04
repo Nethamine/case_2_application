@@ -7,6 +7,9 @@ df_gm = pd.read_csv("grandmaster_matches_useful.csv")
 df_m = pd.read_csv("master_matches_useful.csv")
 df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
 
+# DEBUG - verwijder dit daarna
+st.write(df_all['win'].value_counts())
+st.write(df_all['win'].mean())
 # --- SIDEBAR ---
 st.title("League Data Dashboard")
 
