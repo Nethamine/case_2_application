@@ -148,22 +148,29 @@ elif selected_analyse == "Winrate vs Champion Level":
             (df_filtered['champLevel'] >= duration_range[0]) &
             (df_filtered['champLevel'] <= duration_range[1])
         ].copy()
-        df_dur['champ_level'] = df_dur['champLevel'].astype(int)
+
+        # Altijd: excludeer early surrenders en champions met < 10 games
+        df_dur = df_dur[df_dur['gameEndedInEarlySurrender'] == False]
+        champ_counts = df_dur['championName'].value_counts()
+        df_dur = df_dur[df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]
 
         # Filter op geselecteerde champions
         if selected_champs:
             df_dur = df_dur[df_dur['championName'].isin(selected_champs)]
-            df_dur = df_dur[df_dur['gameEndedInEarlySurrender'] == False]
-            champ_counts = df_dur['championName'].value_counts()
-            df_dur = df_dur[df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]
+
+        # Cumulatief maken (na alle filters)
+        rows = []
+        for _, row in df_dur.iterrows():
+            for level in range(1, int(row['champLevel']) + 1):
+                rows.append({'champ_level': level, 'win': row['win'], 'championName': row['championName']})
+        df_dur_cumul = pd.DataFrame(rows)
 
         if df_dur.empty:
             st.warning("Geen data beschikbaar voor de huidige selectie.")
         else:
             if selected_champs:
-                # Aparte lijn per champion
                 dur_df = (
-                    df_dur.groupby(['champ_level', 'championName'])
+                    df_dur_cumul.groupby(['champ_level', 'championName'])
                     .agg(winrate=('win', 'mean'), games=('win', 'count'))
                     .reset_index()
                 )
@@ -176,9 +183,8 @@ elif selected_analyse == "Winrate vs Champion Level":
                     markers=True
                 )
             else:
-                # Alle champs gecombineerd
                 dur_df = (
-                    df_dur.groupby('champ_level')
+                    df_dur_cumul.groupby('champ_level')
                     .agg(winrate=('win', 'mean'), games=('win', 'count'))
                     .reset_index()
                 )
