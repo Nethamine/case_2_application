@@ -6,7 +6,7 @@ df_chal = pd.read_csv("challenger_matches_useful.csv")
 df_gm = pd.read_csv("grandmaster_matches_useful.csv")
 df_m = pd.read_csv("master_matches_useful.csv")
 df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
-
+st.write(df_all.select_dtypes(include='number').columns.tolist())
 # --- SIDEBAR ---
 st.title("League Data Dashboard")
 
