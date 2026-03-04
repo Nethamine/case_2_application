@@ -150,11 +150,11 @@ elif selected_analyse == "Winrate vs Champion Level":
             (df_filtered['champLevel'] <= duration_range[1])
         ].copy()
 
-        # Altijd: excludeer  champions met < 10 games
+        # Altijd: excludeer champions met < 10 games
         champ_counts = df_dur['championName'].value_counts()
         uitgesloten1 = df_dur[~df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]['championName'].nunique()
         df_dur = df_dur[df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]
-    
+
         if uitgesloten1 > 0:
             st.caption(f"{uitgesloten1} champion(s) uitgesloten wegens minder dan 10 games gespeeld.")
 
