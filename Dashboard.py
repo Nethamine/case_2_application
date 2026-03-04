@@ -216,10 +216,10 @@ elif selected_analyse == "Gold & Minions vs Winrate":
             options=[500, 1000, 2000, 3000],
             value=1000
         )
-
+        min_sample = st.slider("Minimale sample size per bucket", min_value=1, max_value=20, value=5, step=1)
         # Champion filter
         champ_counts_gold = df_filtered['championName'].value_counts()
-        champs_gold = sorted(champ_counts_gold[champ_counts_gold >= 10].index.tolist())
+        champs_gold = sorted(champ_counts_gold[champ_counts_gold >= min_sample].index.tolist())
         selected_champs_gold = st.multiselect(
             "Filter op Champion(s)",
             options=champs_gold,
@@ -248,7 +248,7 @@ elif selected_analyse == "Gold & Minions vs Winrate":
             )
             bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
             uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
-            bucket_df = bucket_df[bucket_df['games'] >= 10]
+            bucket_df = bucket_df[bucket_df['games'] >= min_sample]
 
             if uitgesloten2 > 0:
                 st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
@@ -276,7 +276,7 @@ elif selected_analyse == "Gold & Minions vs Winrate":
             bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
             bucket_df['minions'] = bucket_df['minions'].round(1)
             uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
-            bucket_df = bucket_df[bucket_df['games'] >= 10]
+            bucket_df = bucket_df[bucket_df['games'] >= min_sample]
 
             if uitgesloten2 > 0:
                 st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
