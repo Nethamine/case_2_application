@@ -108,6 +108,7 @@ elif selected_analyse == "KDA per Champion":
             'assists': 'Gem. Assists',
             'kda': 'KDA'
         })
+        detail_df = detail_df.sort_values('KDA', ascending=False)
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
     else:
         missing = required_cols - set(df_filtered.columns)
