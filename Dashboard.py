@@ -170,7 +170,7 @@ elif selected_analyse == "Winrate vs Champion Level":
         else:
             if selected_champs:
                 dur_df = (
-                    df_dur_cumul.groupby(['champ_level', 'championName'])
+                    df_dur.groupby(['champ_level', 'championName'])
                     .agg(winrate=('win', 'mean'), games=('win', 'count'))
                     .reset_index()
                 )
@@ -184,7 +184,7 @@ elif selected_analyse == "Winrate vs Champion Level":
                 )
             else:
                 dur_df = (
-                    df_dur_cumul.groupby('champ_level')
+                    df_dur.groupby('champ_level')
                     .agg(winrate=('win', 'mean'), games=('win', 'count'))
                     .reset_index()
                 )
