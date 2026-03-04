@@ -158,12 +158,7 @@ elif selected_analyse == "Winrate vs Champion Level":
         if selected_champs:
             df_dur = df_dur[df_dur['championName'].isin(selected_champs)]
 
-        # Cumulatief maken (na alle filters)
-        rows = []
-        for _, row in df_dur.iterrows():
-            for level in range(1, int(row['champLevel']) + 1):
-                rows.append({'champ_level': level, 'win': row['win'], 'championName': row['championName']})
-        df_dur_cumul = pd.DataFrame(rows)
+
 
         if df_dur.empty:
             st.warning("Geen data beschikbaar voor de huidige selectie.")
