@@ -17,6 +17,7 @@ with st.sidebar:
         "Games gespeeld per Champion": "games_played",
         "KDA per Champion": "kda",
         "Winrate vs Champion Level": "champ_level_winrate",
+        "Gold & Minions vs Winrate": "gold_minions_winrate",
     }
     selected_analyse = st.selectbox("Kies analyse", list(analyse_opties.keys()))
 
@@ -202,3 +203,51 @@ elif selected_analyse == "Winrate vs Champion Level":
             st.caption(f"Gebaseerd op {len(df_dur):,} games met champion level tussen {duration_range[0]} en {duration_range[1]}.")
     else:
         st.warning("Kolom 'champLevel' of 'win' niet gevonden in de data.")
+
+# --- GOLD & MINIONS VS WINRATE ---
+elif selected_analyse == "Gold & Minions vs Winrate":
+    st.subheader("Gold & Minions vs Winrate per Champion")
+    required_cols = {'championName', 'goldEarned', 'totalMinionsKilled', 'win'}
+    if required_cols.issubset(df_filtered.columns):
+        gold_df = (
+            df_filtered.groupby('championName')
+            .agg(
+                winrate=('win', 'mean'),
+                gold=('goldEarned', 'mean'),
+                minions=('totalMinionsKilled', 'mean'),
+                games=('win', 'count')
+            )
+            .reset_index()
+        )
+        # Excludeer champions met < 10 games
+        uitgesloten2 = gold_df[gold_df['games'] < 10].shape[0]
+        gold_df = gold_df[gold_df['games'] >= 10]
+        gold_df['winrate'] = (gold_df['winrate'] * 100).round(1)
+        gold_df['gold'] = gold_df['gold'].round(0)
+        gold_df['minions'] = gold_df['minions'].round(1)
+
+        if uitgesloten2 > 0:
+            st.caption(f"{uitgesloten2} champion(s) uitgesloten wegens minder dan 10 games gespeeld.")
+
+        fig = px.scatter(
+            gold_df,
+            x='gold',
+            y='winrate',
+            size='minions',        # grootte van de bubble = gem. minions
+            color='winrate',
+            hover_name='championName',
+            hover_data={'gold': True, 'minions': True, 'games': True, 'winrate': True},
+            title=f"Gold Earned & Minions vs Winrate per Champion ({', '.join(selected_tiers)})",
+            labels={
+                'gold': 'Gem. Gold Earned',
+                'winrate': 'Winrate (%)',
+                'minions': 'Gem. Minions Killed'
+            },
+            color_continuous_scale='RdYlGn'
+        )
+        fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+        st.plotly_chart(fig, use_container_width=True)
+        st.info("ℹ️ De grootte van elke bubble geeft het gemiddeld aantal minions killed weer.")
+    else:
+        missing = required_cols - set(df_filtered.columns)
+        st.warning(f"Ontbrekende kolommen: {', '.join(missing)}")
