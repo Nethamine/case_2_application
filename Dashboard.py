@@ -149,6 +149,9 @@ elif selected_analyse == "Winrate vs Champion Level":
         # Filter op geselecteerde champions
         if selected_champs:
             df_dur = df_dur[df_dur['championName'].isin(selected_champs)]
+            df_dur = df_dur[df_dur['gameEndedInEarlySurrender'] == False]
+            champ_counts = df_dur['championName'].value_counts()
+            df_dur = df_dur[df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]
 
         if df_dur.empty:
             st.warning("Geen data beschikbaar voor de huidige selectie.")
