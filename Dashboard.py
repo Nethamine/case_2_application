@@ -143,6 +143,7 @@ elif selected_analyse == "KDA per Champion":
 # --- WINRATE VS CHAMPION LEVEL ---
 elif selected_analyse == "Winrate vs Champion Level":
     st.subheader("Winrate vs Champion Level")
+    st.info("ℹ️ Alleen champions met minimaal **10 gespeelde games** worden getoond.")
     if 'champLevel' in df_filtered.columns and 'win' in df_filtered.columns:
         df_dur = df_filtered[
             (df_filtered['champLevel'] >= duration_range[0]) &
@@ -154,6 +155,8 @@ elif selected_analyse == "Winrate vs Champion Level":
         champ_counts = df_dur['championName'].value_counts()
         df_dur = df_dur[df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]
 
+        if uitgesloten > 0:
+            st.caption(f'{uitgesloten} champion(s) uitgesloten wegens minder dan 10 games gespeeld')
         # Filter op geselecteerde champions
         if selected_champs:
             df_dur = df_dur[df_dur['championName'].isin(selected_champs)]
