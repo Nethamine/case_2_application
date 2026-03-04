@@ -217,41 +217,79 @@ elif selected_analyse == "Gold & Minions vs Winrate":
             value=1000
         )
 
+        # Champion filter
+        champ_counts_gold = df_filtered['championName'].value_counts()
+        champs_gold = sorted(champ_counts_gold[champ_counts_gold >= 10].index.tolist())
+        selected_champs_gold = st.multiselect(
+            "Filter op Champion(s)",
+            options=champs_gold,
+            default=[]
+        )
+
         df_gold = df_filtered.copy()
+        if selected_champs_gold:
+            df_gold = df_gold[df_gold['championName'].isin(selected_champs_gold)]
+
         df_gold['gold_bucket'] = (df_gold['goldEarned'] // bucket_size * bucket_size).astype(int)
         df_gold['gold_bucket_label'] = df_gold['gold_bucket'].apply(
             lambda x: f"{x//1000}k-{(x+bucket_size)//1000}k"
         )
 
-        bucket_df = (
-            df_gold.groupby('gold_bucket')
-            .agg(
-                winrate=('win', 'mean'),
-                games=('win', 'count'),
-                minions=('totalMinionsKilled', 'mean'),
-                gold_label=('gold_bucket_label', 'first')
+        if selected_champs_gold:
+            bucket_df = (
+                df_gold.groupby(['gold_bucket', 'championName'])
+                .agg(
+                    winrate=('win', 'mean'),
+                    games=('win', 'count'),
+                    gold_label=('gold_bucket_label', 'first')
+                )
+                .reset_index()
+                .sort_values('gold_bucket')
             )
-            .reset_index()
-            .sort_values('gold_bucket')
-        )
-        bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
-        bucket_df['minions'] = bucket_df['minions'].round(1)
+            bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
+            uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
+            bucket_df = bucket_df[bucket_df['games'] >= 10]
 
-        # Excludeer buckets met < 10 games
-        uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
-        bucket_df = bucket_df[bucket_df['games'] >= 10]
+            if uitgesloten2 > 0:
+                st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
 
-        if uitgesloten2 > 0:
-            st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
+            fig = px.line(
+                bucket_df, x='gold_label', y='winrate',
+                color='championName',
+                hover_data={'games': True},
+                title=f"Winrate per Gold Bucket per Champion ({', '.join(selected_tiers)})",
+                labels={'gold_label': 'Gold Earned', 'winrate': 'Winrate (%)', 'championName': 'Champion'},
+                markers=True
+            )
+        else:
+            bucket_df = (
+                df_gold.groupby('gold_bucket')
+                .agg(
+                    winrate=('win', 'mean'),
+                    games=('win', 'count'),
+                    minions=('totalMinionsKilled', 'mean'),
+                    gold_label=('gold_bucket_label', 'first')
+                )
+                .reset_index()
+                .sort_values('gold_bucket')
+            )
+            bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
+            bucket_df['minions'] = bucket_df['minions'].round(1)
+            uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
+            bucket_df = bucket_df[bucket_df['games'] >= 10]
 
-        fig = px.bar(
-            bucket_df, x='gold_label', y='winrate',
-            color='winrate',
-            hover_data={'games': True, 'minions': True},
-            title=f"Winrate per Gold Bucket ({', '.join(selected_tiers)})",
-            labels={'gold_label': 'Gold Earned', 'winrate': 'Winrate (%)'},
-            color_continuous_scale='RdYlGn'
-        )
+            if uitgesloten2 > 0:
+                st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
+
+            fig = px.bar(
+                bucket_df, x='gold_label', y='winrate',
+                color='winrate',
+                hover_data={'games': True, 'minions': True},
+                title=f"Winrate per Gold Bucket ({', '.join(selected_tiers)})",
+                labels={'gold_label': 'Gold Earned', 'winrate': 'Winrate (%)'},
+                color_continuous_scale='RdYlGn'
+            )
+
         fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
         st.plotly_chart(fig, use_container_width=True)
         st.info("ℹ️ Hover over een bucket om het aantal games en gemiddeld aantal minions te zien.")
