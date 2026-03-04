@@ -5,7 +5,7 @@ import time
 API_KEY = 'Jouw API key'
 REGION = 'euw1'
 
-MAX_PUUIDS = 5
+MAX_PUUIDS = 100
 MATCHS_PER_PUUID = 10
 
 REQUESTS_PER_SECOND = 20
