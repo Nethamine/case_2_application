@@ -18,7 +18,7 @@ st.title("League data vergeijking")
 
 
 with st.sidebar:
-    st.header("Filters", divider==True)
+    st.header("Filters")
     selected_atribute = st.selectbox("Kies Rank/Tier", df_all['tier'].unique())
 
 tab1, tab2, tab3 = st.tabs(["Winrate vs Champ ", "Rank vs Champ gespeelt", "Tab 3"])
