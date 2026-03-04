@@ -7,9 +7,6 @@ df_gm = pd.read_csv("grandmaster_matches_useful.csv")
 df_m = pd.read_csv("master_matches_useful.csv")
 df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
 
-# DEBUG - verwijder dit daarna
-st.write(df_all['win'].value_counts())
-st.write(df_all['win'].mean())
 # --- SIDEBAR ---
 st.title("League Data Dashboard")
 
@@ -153,8 +150,7 @@ elif selected_analyse == "Winrate vs Champion Level":
             (df_filtered['champLevel'] <= duration_range[1])
         ].copy()
 
-        # Altijd: excludeer early surrenders en champions met < 10 games
-        df_dur = df_dur[df_dur['gameEndedInEarlySurrender'] == False]
+        # Altijd: excludeer  champions met < 10 games
         champ_counts = df_dur['championName'].value_counts()
         uitgesloten1 = df_dur[~df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]['championName'].nunique()
         df_dur = df_dur[df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]
