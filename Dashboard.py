@@ -158,7 +158,8 @@ elif selected_analyse == "Winrate vs Champion Level":
         if selected_champs:
             df_dur = df_dur[df_dur['championName'].isin(selected_champs)]
 
-
+        # Hernoem kolom
+        df_dur = df_dur.rename(columns={'champLevel': 'champ_level'})
 
         if df_dur.empty:
             st.warning("Geen data beschikbaar voor de huidige selectie.")
