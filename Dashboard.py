@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-
+from plots import save_winrate_plot, save_counterpick_heatmap
 st.title("League data vergeijking")
 
 tab1, tab2, tab3 = st.tabs(["Tab 1", "Tab 2", "Tab 3"])
