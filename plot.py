@@ -1,66 +1,94 @@
-import pandas as pd
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
 
-def save_winrate_plot(df, tier):
-    winrate_per_champ = df.groupby('championName')['win'].mean().sort_values(ascending=False)
+def save_winrate_plot(df, tier_name):
+    winrate = (
+        df.groupby('championName')['win']
+        .mean()
+        .sort_values(ascending=False)
+        .head(15)
+    )
+
     fig, ax = plt.subplots(figsize=(8,6))
-    sns.barplot(x=winrate_per_champ.values, y=winrate_per_champ.index, ax=ax)
+    sns.barplot(x=winrate.values, y=winrate.index, ax=ax)
+
     ax.set_xlabel("Winrate")
     ax.set_ylabel("Champion")
-    ax.set_title(f"Winrate per Champion - {tier}")
-    
-    # Sla op als afbeelding
-    os.makedirs("plots", exist_ok=True)
-    path = f"plots/winrate_{tier}.png"
-    fig.savefig(path, bbox_inches='tight')
-    plt.close(fig)
-    return path
+    ax.set_title(f"Winrate per Champion — {tier_name}")
 
-def save_counterpick_heatmap(df, tier, role):
-    # Bereken counterpick stats
+    os.makedirs("plots", exist_ok=True)
+    path = f"plots/winrate_{tier_name.lower()}.png"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+def save_counterpick_heatmap(df, tier_name, role):
     counter_data = []
+
     for match_id, match_group in df.groupby('match_id'):
-        for r in match_group['teamPosition'].unique():
-            role_group = match_group[match_group['teamPosition'] == r]
-            if len(role_group['teamId'].unique()) != 2:
-                continue
-            teams = role_group.groupby('teamId')
-            team1 = teams.get_group(list(teams.groups.keys())[0])
-            team2 = teams.get_group(list(teams.groups.keys())[1])
-            champ1, champ2 = team1.iloc[0]['championName'], team2.iloc[0]['championName']
-            win1, win2 = team1.iloc[0]['win'], team2.iloc[0]['win']
-            counter_data.append({'champion': champ1, 'vs': champ2, 'win': win1})
-            counter_data.append({'champion': champ2, 'vs': champ1, 'win': win2})
+        role_group = match_group[match_group['teamPosition'] == role]
+
+        if len(role_group['teamId'].unique()) != 2:
+            continue
+
+        teams = role_group.groupby('teamId')
+        team_ids = list(teams.groups.keys())
+
+        p1 = teams.get_group(team_ids[0]).iloc[0]
+        p2 = teams.get_group(team_ids[1]).iloc[0]
+
+        counter_data.append({
+            'champion': p1['championName'],
+            'vs': p2['championName'],
+            'win': p1['win']
+        })
+        counter_data.append({
+            'champion': p2['championName'],
+            'vs': p1['championName'],
+            'win': p2['win']
+        })
 
     counter_df = pd.DataFrame(counter_data)
-    counter_filtered = counter_df[
-        (counter_df['champion'].isin(df[df['teamPosition']==role]['championName'])) &
-        (counter_df['vs'].isin(df[df['teamPosition']==role]['championName']))
-    ]
-    if counter_filtered.empty:
-        return None
 
-    pivot_df = counter_filtered.pivot(index='champion', columns='vs', values='win').fillna(0)
+    if counter_df.empty:
+        return
+
+    pivot_df = (
+        counter_df
+        .groupby(['champion', 'vs'])['win']
+        .mean()
+        .reset_index()
+        .pivot(index='champion', columns='vs', values='win')
+        .fillna(0)
+    )
 
     fig, ax = plt.subplots(figsize=(10,8))
     sns.heatmap(
         pivot_df,
-        annot=True,
-        fmt=".2f",
         cmap="RdBu_r",
         center=0.5,
-        linewidths=.5,
-        cbar_kws={'label': 'Winrate'},
         ax=ax
     )
-    ax.set_xlabel("Versus")
-    ax.set_ylabel("Champion")
-    ax.set_title(f"Counterpick Winrate - {role} - {tier}")
+
+    ax.set_title(f"Counterpick Winrate — {role} — {tier_name}")
 
     os.makedirs("plots", exist_ok=True)
-    path = f"plots/counterpick_{tier}_{role}.png"
-    fig.savefig(path, bbox_inches='tight')
+    path = f"plots/counterpick_{tier_name.lower()}_{role}.png"
+    fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
-    return path
+
+import pandas as pd
+
+# laad per tier
+df_chal = pd.read_csv("challenger_matches_useful.csv")
+df_master = pd.read_csv("master_matches_useful.csv")
+df_gm = pd.read_csv("grandmaster_matches_useful.csv")
+
+# winrate plots
+save_winrate_plot(df_chal, "Challenger")
+save_winrate_plot(df_master, "Master")
+save_winrate_plot(df_gm, "Grandmaster")
+
+# counterpicks (voorbeeld MID)
+for role in ["TOP", "JUNGLE", "MID", "BOTTOM", "UTILITY"]:
+    save_counterpick_heatmap(df_chal, "Challenger", role)
