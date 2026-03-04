@@ -22,11 +22,24 @@ with st.sidebar:
     selected_analyse = st.selectbox("Kies analyse", list(analyse_opties.keys()))
 
     alle_tiers = sorted(df_all['tier'].dropna().unique().tolist())
-    selected_tiers = st.multiselect(
-        "Kies Tier(s)/Rank(s)",
-        options=alle_tiers,
-        default=alle_tiers  # standaard alles geselecteerd
-    )
+    # Initialiseer session_state key als die nog niet bestaat
+if "selected_tiers" not in st.session_state:
+    st.session_state["selected_tiers"] = alle_tiers
+
+selected_tiers = st.multiselect(
+    "Kies Tier(s)/Rank(s)",
+    options=alle_tiers,
+    default=st.session_state["selected_tiers"],
+    key="selected_tiers"
+)
+
+# Als niets geselecteerd: reset naar alles en herlaad
+if not selected_tiers:
+    st.session_state["selected_tiers"] = alle_tiers
+    st.rerun()
+
+# Filter df op geselecteerde tiers
+df_filtered = df_all[df_all['tier'].isin(selected_tiers)]
 
 # Filter df op geselecteerde tiers
 df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
