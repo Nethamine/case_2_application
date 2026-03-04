@@ -7,6 +7,10 @@ df_gm = pd.read_csv("grandmaster_matches_useful.csv")
 df_m = pd.read_csv("master_matches_useful.csv")
 df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
 
+# Gameduur in minuten aanmaken indien kolom bestaat
+if 'gameDuration' in df_all.columns:
+    df_all['gameDuration_min'] = df_all['gameDuration'] / 60
+
 # --- SIDEBAR ---
 st.title("League Data Dashboard")
 
@@ -16,6 +20,7 @@ with st.sidebar:
         "Winrate per Champion": "winrate",
         "Games gespeeld per Champion": "games_played",
         "KDA per Champion": "kda",
+        "Winrate vs Gameduur": "duration_winrate",
     }
     selected_analyse = st.selectbox("Kies analyse", list(analyse_opties.keys()))
 
@@ -26,11 +31,25 @@ with st.sidebar:
         default=alle_tiers
     )
 
+    # Slider alleen tonen bij de gameduur analyse
+    if selected_analyse == "Winrate vs Gameduur" and 'gameDuration_min' in df_all.columns:
+        min_dur = int(df_all['gameDuration_min'].min())
+        max_dur = int(df_all['gameDuration_min'].max())
+        duration_range = st.slider(
+            "Filter op gameduur (minuten)",
+            min_value=min_dur,
+            max_value=max_dur,
+            value=(min_dur, max_dur),
+            step=1
+        )
+    else:
+        duration_range = None
+
 # Filter df op geselecteerde tiers
 df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
 
 if not selected_tiers:
-    st.warning("⚠️ Selecteer minimaal één tier in de sidebar om data te bekijken.")
+    st.warning("Selecteer minimaal een tier in de sidebar om data te bekijken.")
     st.stop()
 
 # --- WINRATE ---
@@ -113,3 +132,37 @@ elif selected_analyse == "KDA per Champion":
     else:
         missing = required_cols - set(df_filtered.columns)
         st.warning(f"Ontbrekende kolommen voor KDA berekening: {', '.join(missing)}")
+
+# --- WINRATE VS GAMEDUUR ---
+elif selected_analyse == "Winrate vs Gameduur":
+    st.subheader("Winrate vs Gameduur")
+    if 'gameDuration_min' in df_filtered.columns and 'win' in df_filtered.columns:
+        # Filter op slider range
+        df_dur = df_filtered[
+            (df_filtered['gameDuration_min'] >= duration_range[0]) &
+            (df_filtered['gameDuration_min'] <= duration_range[1])
+        ].copy()
+
+        # Groepeer per minuut
+        df_dur['gameduur_bucket'] = df_dur['gameDuration_min'].round(0).astype(int)
+
+        dur_df = (
+            df_dur.groupby('gameduur_bucket')
+            .agg(winrate=('win', 'mean'), games=('win', 'count'))
+            .reset_index()
+        )
+        dur_df['winrate'] = (dur_df['winrate'] * 100).round(1)
+
+        fig = px.line(
+            dur_df, x='gameduur_bucket', y='winrate',
+            title=f"Winrate per Gameduur ({', '.join(selected_tiers)})",
+            labels={'gameduur_bucket': 'Gameduur (minuten)', 'winrate': 'Winrate (%)'},
+            markers=True
+        )
+        fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+        fig.update_traces(line_color='royalblue')
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.caption(f"Gebaseerd op {len(df_dur):,} games tussen {duration_range[0]} en {duration_range[1]} minuten.")
+    else:
+        st.warning("Kolom 'gameDuration' of 'win' niet gevonden in de data.")
