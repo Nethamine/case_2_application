@@ -66,15 +66,21 @@ if 'teamPosition' in df_all.columns and not selected_roles:
 # --- WINRATE ---
 if selected_analyse == "Winrate per Champion":
     st.subheader("Winrate per Champion")
+    st.info("ℹ️ Alleen champions met minimaal **10 gespeelde games** worden getoond.")
     if 'championName' in df_filtered.columns and 'win' in df_filtered.columns:
         winrate_df = (
             df_filtered.groupby('championName')['win']
-            .mean()
+            .agg(winrate='mean', games='count')
             .reset_index()
-            .rename(columns={'win': 'winrate'})
-            .sort_values('winrate', ascending=False)
         )
+        uitgesloten = winrate_df[winrate_df['games'] < 10].shape[0]
+        winrate_df = winrate_df[winrate_df['games'] >= 10]
         winrate_df['winrate'] = (winrate_df['winrate'] * 100).round(1)
+        winrate_df = winrate_df.sort_values('winrate', ascending=False)
+
+        if uitgesloten > 0:
+            st.caption(f"{uitgesloten} champion(s) uitgesloten wegens minder dan 10 games gespeeld.")
+
         fig = px.bar(
             winrate_df, x='championName', y='winrate',
             title=f"Winrate per Champion ({', '.join(selected_tiers)})",
