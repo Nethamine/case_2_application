@@ -7,8 +7,6 @@ df_gm = pd.read_csv("grandmaster_matches_useful.csv")
 df_m = pd.read_csv("master_matches_useful.csv")
 df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
 
-# champLevel is al een integer, geen conversie nodig
-
 # --- SIDEBAR ---
 st.title("League Data Dashboard")
 
@@ -23,34 +21,26 @@ with st.sidebar:
     selected_analyse = st.selectbox("Kies analyse", list(analyse_opties.keys()))
 
     alle_tiers = sorted(df_all['tier'].dropna().unique().tolist())
-    selected_tiers = st.multiselect(
-        "Kies Tier(s)/Rank(s)",
-        options=alle_tiers,
-        default=alle_tiers
-    )
+    selected_tiers = st.multiselect("Kies Tier(s)/Rank(s)", options=alle_tiers, default=alle_tiers)
 
     alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist()) if 'teamPosition' in df_all.columns else []
-    selected_roles = st.multiselect(
-        "Kies Role(s)",
-        options=alle_roles,
-        default=alle_roles
-    )
+    selected_roles = st.multiselect("Kies Role(s)", options=alle_roles, default=alle_roles)
 
-    # Slider alleen tonen bij de gameduur analyse
     if selected_analyse == "Winrate vs Champion Level" and 'champLevel' in df_all.columns:
         min_dur = int(df_all['champLevel'].min())
         max_dur = 20
         duration_range = st.slider(
             "Filter op Champion Level",
-            min_value=min_dur,
-            max_value=max_dur,
-            value=(min_dur, max_dur),
-            step=1
+            min_value=min_dur, max_value=max_dur,
+            value=(min_dur, max_dur), step=1
         )
+        alle_champs = sorted(df_all['championName'].dropna().unique().tolist())
+        selected_champs = st.multiselect("Filter op Champion(s)", options=alle_champs, default=[])
     else:
         duration_range = None
+        selected_champs = []
 
-# Filter df op geselecteerde tiers en roles
+# --- FILTERING ---
 df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
 if selected_roles and 'teamPosition' in df_filtered.columns:
     df_filtered = df_filtered[df_filtered['teamPosition'].isin(selected_roles)]
@@ -138,48 +128,64 @@ elif selected_analyse == "KDA per Champion":
         detail_df = kda_df[['championName', 'kills', 'deaths', 'assists', 'kda']].copy()
         detail_df[['kills', 'deaths', 'assists']] = detail_df[['kills', 'deaths', 'assists']].round(2)
         detail_df = detail_df.rename(columns={
-            'championName': 'Champion',
-            'kills': 'Gem. Kills',
-            'deaths': 'Gem. Deaths',
-            'assists': 'Gem. Assists',
-            'kda': 'KDA'
+            'championName': 'Champion', 'kills': 'Gem. Kills',
+            'deaths': 'Gem. Deaths', 'assists': 'Gem. Assists', 'kda': 'KDA'
         })
-        detail_df = detail_df.sort_values('KDA', ascending=False)
-        st.dataframe(detail_df, use_container_width=True, hide_index=True)
+        st.dataframe(detail_df.sort_values('KDA', ascending=False), use_container_width=True, hide_index=True)
     else:
         missing = required_cols - set(df_filtered.columns)
         st.warning(f"Ontbrekende kolommen voor KDA berekening: {', '.join(missing)}")
 
-# --- WINRATE VS GAMEDUUR ---
+# --- WINRATE VS CHAMPION LEVEL ---
 elif selected_analyse == "Winrate vs Champion Level":
     st.subheader("Winrate vs Champion Level")
     if 'champLevel' in df_filtered.columns and 'win' in df_filtered.columns:
-        # Filter op slider range
         df_dur = df_filtered[
             (df_filtered['champLevel'] >= duration_range[0]) &
             (df_filtered['champLevel'] <= duration_range[1])
         ].copy()
-
-        # Groepeer per champion level
         df_dur['champ_level'] = df_dur['champLevel'].astype(int)
 
-        dur_df = (
-            df_dur.groupby('champ_level')
-            .agg(winrate=('win', 'mean'), games=('win', 'count'))
-            .reset_index()
-        )
-        dur_df['winrate'] = (dur_df['winrate'] * 100).round(1)
+        # Filter op geselecteerde champions
+        if selected_champs:
+            df_dur = df_dur[df_dur['championName'].isin(selected_champs)]
 
-        fig = px.line(
-            dur_df, x='champ_level', y='winrate',
-            title=f"Winrate per Champion Level ({', '.join(selected_tiers)})",
-            labels={'champ_level': 'Champion Level', 'winrate': 'Winrate (%)'},
-            markers=True
-        )
-        fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
-        fig.update_traces(line_color='royalblue')
-        st.plotly_chart(fig, use_container_width=True)
+        if df_dur.empty:
+            st.warning("Geen data beschikbaar voor de huidige selectie.")
+        else:
+            if selected_champs:
+                # Aparte lijn per champion
+                dur_df = (
+                    df_dur.groupby(['champ_level', 'championName'])
+                    .agg(winrate=('win', 'mean'), games=('win', 'count'))
+                    .reset_index()
+                )
+                dur_df['winrate'] = (dur_df['winrate'] * 100).round(1)
+                fig = px.line(
+                    dur_df, x='champ_level', y='winrate',
+                    color='championName',
+                    title="Winrate per Champion Level per Champion",
+                    labels={'champ_level': 'Champion Level', 'winrate': 'Winrate (%)', 'championName': 'Champion'},
+                    markers=True
+                )
+            else:
+                # Alle champs gecombineerd
+                dur_df = (
+                    df_dur.groupby('champ_level')
+                    .agg(winrate=('win', 'mean'), games=('win', 'count'))
+                    .reset_index()
+                )
+                dur_df['winrate'] = (dur_df['winrate'] * 100).round(1)
+                fig = px.line(
+                    dur_df, x='champ_level', y='winrate',
+                    title=f"Winrate per Champion Level ({', '.join(selected_tiers)})",
+                    labels={'champ_level': 'Champion Level', 'winrate': 'Winrate (%)'},
+                    markers=True
+                )
+                fig.update_traces(line_color='royalblue')
 
-        st.caption(f"Gebaseerd op {len(df_dur):,} games met champion level tussen {duration_range[0]} en {duration_range[1]}.")
+            fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption(f"Gebaseerd op {len(df_dur):,} games met champion level tussen {duration_range[0]} en {duration_range[1]}.")
     else:
         st.warning("Kolom 'champLevel' of 'win' niet gevonden in de data.")
