@@ -39,7 +39,7 @@ with st.sidebar:
     # Slider alleen tonen bij de gameduur analyse
     if selected_analyse == "Winrate vs Champion Level" and 'champLevel' in df_all.columns:
         min_dur = int(df_all['champLevel'].min())
-        max_dur = int(df_all['champLevel'].max())
+        max_dur = 20
         duration_range = st.slider(
             "Filter op Champion Level",
             min_value=min_dur,
