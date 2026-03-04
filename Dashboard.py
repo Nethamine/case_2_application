@@ -29,6 +29,13 @@ with st.sidebar:
         default=alle_tiers
     )
 
+    alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist()) if 'teamPosition' in df_all.columns else []
+    selected_roles = st.multiselect(
+        "Kies Role(s)",
+        options=alle_roles,
+        default=alle_roles
+    )
+
     # Slider alleen tonen bij de gameduur analyse
     if selected_analyse == "Winrate vs Champion Level" and 'champLevel' in df_all.columns:
         min_dur = int(df_all['champLevel'].min())
@@ -43,11 +50,17 @@ with st.sidebar:
     else:
         duration_range = None
 
-# Filter df op geselecteerde tiers
+# Filter df op geselecteerde tiers en roles
 df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
+if selected_roles and 'teamPosition' in df_filtered.columns:
+    df_filtered = df_filtered[df_filtered['teamPosition'].isin(selected_roles)]
 
 if not selected_tiers:
     st.warning("Selecteer minimaal een tier in de sidebar om data te bekijken.")
+    st.stop()
+
+if 'teamPosition' in df_all.columns and not selected_roles:
+    st.warning("Selecteer minimaal een role in de sidebar om data te bekijken.")
     st.stop()
 
 # --- WINRATE ---
