@@ -34,7 +34,9 @@ with st.sidebar:
             min_value=min_dur, max_value=max_dur,
             value=(min_dur, max_dur), step=1
         )
-        df_role_filtered = df_all[df_all['teamPosition'].isin(selected_roles)] if selected_roles else df_all
+        df_role_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
+        if selected_roles:
+            df_role_filtered = df_role_filtered[df_role_filtered['teamPosition'].isin(selected_roles)]
         champ_counts = df_role_filtered['championName'].value_counts()
         alle_champs = sorted(champ_counts[champ_counts >= 10].index.tolist())
         selected_champs = st.multiselect("Filter op Champion(s)", options=alle_champs, default=[])
