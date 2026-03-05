@@ -125,14 +125,14 @@ elif selected_analyse == "Champion Tier List":
         st.stop()
 
     # --- GEWICHTEN SLIDERS ---
-    st.markdown("**Stel je eigen gewichten in:**")
+    st.markdown("**Wat is voor jou belangrijk? Stel het hier in:**")
     col1, col2 = st.columns(2)
     with col1:
-        gewicht_winrate = st.slider("🏆 Winrate gewicht (%)", 0, 100, 50, step=5)
-        gewicht_kda = st.slider("⚔️ KDA gewicht (%)", 0, 100 - gewicht_winrate, 25, step=5)
+        gewicht_winrate = st.slider("🏆 Winrate prioriteit (%)", 0, 100, 50, step=5)
+        gewicht_kda = st.slider("⚔️ KDA prioriteit (%)", 0, 100 - gewicht_winrate, 25, step=5)
     with col2:
         gewicht_populariteit = 100 - gewicht_winrate - gewicht_kda
-        st.metric("🎮 Populariteit gewicht", f"{gewicht_populariteit}%")
+        st.metric("🎮 Populariteit prioriteit", f"{gewicht_populariteit}%")
         st.caption("Wordt automatisch berekend op basis van de andere twee sliders.")
 
     # --- MINIMALE GAMES FILTER ---
