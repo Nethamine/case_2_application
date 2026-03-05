@@ -84,8 +84,7 @@ if selected_analyse == "🏠 Home":
     st.subheader("Hoe gebruik je dit dashboard?")
     st.markdown("""
     1. Kies een **analyse** in de sidebar links
-    2. Filter op **rank** om jouw eigen rank te bekijken
-    3. Gebruik de inzichten om jouw **ranked gameplay te verbeteren**
+    2. Gebruik de inzichten om jouw **ranked gameplay te verbeteren**
     """)
 
     st.info("💡 Tip: Begin met de **Counterpick Analyse** als je direct wilt weten welke champion je moet picken in je volgende game.")
