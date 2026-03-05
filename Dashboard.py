@@ -25,8 +25,11 @@ with st.sidebar:
     alle_tiers = sorted(df_all['tier'].dropna().unique().tolist())
     selected_tiers = st.multiselect("Kies Tier(s)/Rank(s)", options=alle_tiers, default=alle_tiers)
 
-    alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist()) if 'teamPosition' in df_all.columns else []
-    selected_roles = st.multiselect("Kies Role(s)", options=alle_roles, default=alle_roles)
+    if selected_analyse != "Counterpick Analyse":
+        alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist()) if 'teamPosition' in df_all.columns else []
+        selected_roles = st.multiselect("Kies Role(s)", options=alle_roles, default=alle_roles)
+    else:
+        selected_roles = alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist())
 
     if selected_analyse == "Winrate vs Champion Level" and 'champLevel' in df_all.columns:
         min_dur = int(df_all['champLevel'].min())
