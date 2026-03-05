@@ -210,10 +210,33 @@ elif selected_analyse == "Winrate vs Champion Level":
 
 elif selected_analyse == "Vision & Winrate Analyse":
     st.subheader("Vision & Winrate Analyse")
-    st.info("ℹ️ Vergelijk hoe verschillende vision metrics samenhangen met winrate.")
+    st.info("ℹ️ Ontdek hoeveel vision jij nodig hebt om zo veel mogelijk games te winnen in jouw role.")
+
+    # --- ROLE SELECTOR ---
+    role_display_options = ["TOP", "JUNGLE", "MID", "BOTTOM", "SUPPORT"]
+    role_map_vision = {
+        "TOP": "TOP",
+        "JUNGLE": "JUNGLE",
+        "MID": "MIDDLE",
+        "BOTTOM": "BOTTOM",
+        "SUPPORT": "UTILITY"
+    }
+
+    selected_role_display = st.radio(
+        "Kies jouw role",
+        options=role_display_options,
+        horizontal=True
+    )
+    selected_role = role_map_vision[selected_role_display]
+
+    df_role_vision = df_filtered[df_filtered['teamPosition'] == selected_role]
+
+    if df_role_vision.empty:
+        st.warning("Geen data beschikbaar voor deze role en tier selectie.")
+        st.stop()
 
     # --- CHECKBOXES ---
-    st.markdown("**Kies metrics om te vergelijken:**")
+    st.markdown("**Kies welke vision metrics je wilt analyseren:**")
     col1, col2 = st.columns(2)
     with col1:
         show_vision = st.checkbox("Vision Score (totaal)", value=True)
@@ -236,27 +259,20 @@ elif selected_analyse == "Vision & Winrate Analyse":
         st.warning("Selecteer minimaal één metric om de grafiek te tonen.")
         st.stop()
 
-    # --- BUCKET GROOTTE ---
+    # --- BUCKET SLIDER ---
     bucket_size = st.select_slider(
-        "Bucket grootte (hogere waarde = minder maar stabielere datapunten)",
+        "Bucket grootte",
         options=[1, 2, 3, 5, 10],
         value=3
     )
     min_games = st.slider("Minimaal aantal games per bucket", min_value=5, max_value=50, value=10, step=5)
 
-    # --- DATA BOUWEN ---
-    required_cols = {'visionScore', 'wardsPlaced', 'wardsKilled', 'detectorWardsPlaced', 'win'}
-    missing = required_cols - set(df_filtered.columns)
-    if missing:
-        st.warning(f"Ontbrekende kolommen: {', '.join(missing)}")
-        st.stop()
-
-    # Bouw een lijn per metric
-    fig = px.line(title=f"Vision Metrics vs Winrate ({', '.join(selected_tiers)})")
+    # --- GRAFIEK ---
+    fig = px.line(title=f"Vision Metrics vs Winrate — {selected_role_display} ({', '.join(selected_tiers)})")
     fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
 
     for col, label in selected_metrics:
-        df_metric = df_filtered[[col, 'win']].copy()
+        df_metric = df_role_vision[[col, 'win']].copy()
         df_metric['bucket'] = (df_metric[col] // bucket_size * bucket_size).astype(int)
 
         bucket_df = (
@@ -285,22 +301,26 @@ elif selected_analyse == "Vision & Winrate Analyse":
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- DETAIL TABEL ---
-    st.subheader("Gemiddelden per metric: Winnaars vs Verliezers")
+    # --- DETAIL TABEL: winnaars vs verliezers ---
+    st.subheader(f"Wat doen winnende {selected_role_display} spelers anders?")
+    st.caption("Vergelijking van gemiddelde vision metrics tussen winnaars en verliezers.")
+
     detail_rows = []
     for col, label in selected_metrics:
-        winners = df_filtered[df_filtered['win'] == 1][col].mean()
-        losers = df_filtered[df_filtered['win'] == 0][col].mean()
+        winners = df_role_vision[df_role_vision['win'] == 1][col].mean()
+        losers = df_role_vision[df_role_vision['win'] == 0][col].mean()
+        verschil = winners - losers
         detail_rows.append({
             'Metric': label,
             'Gem. Winnaars': round(winners, 2),
             'Gem. Verliezers': round(losers, 2),
-            'Verschil': round(winners - losers, 2)
+            'Verschil': round(verschil, 2),
+            'Conclusie': f"Winnaars hebben {round(abs(verschil), 2)} {'meer' if verschil > 0 else 'minder'} {label.lower()}"
         })
 
     detail_df = pd.DataFrame(detail_rows).sort_values('Verschil', ascending=False)
     st.dataframe(detail_df, use_container_width=True, hide_index=True)
-
+    st.caption(f"Gebaseerd op {len(df_role_vision):,} games als {selected_role_display} in {', '.join(selected_tiers)}.")
 # --- COUNTERPICK ANALYSE ---
 elif selected_analyse == "Counterpick Analyse":
     st.subheader("Counterpick Analyse")
