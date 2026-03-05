@@ -14,6 +14,7 @@ with st.sidebar:
     st.header("Filters")
     analyse_opties = {
         "🏠 Home": "home",
+        "Champion Tier List": "tier_list",
         "Winrate per Champion": "winrate",
         "Games gespeeld per Champion": "games_played",
         "KDA per Champion": "kda",
@@ -26,7 +27,7 @@ with st.sidebar:
     alle_tiers = sorted(df_all['tier'].dropna().unique().tolist())
     selected_tiers = st.multiselect("Kies Tier(s)/Rank(s)", options=alle_tiers, default=alle_tiers)
 
-    if selected_analyse not in ["Counterpick Analyse", "Vision & Winrate Analyse"]:
+    if selected_analyse not in ["Counterpick Analyse", "Vision & Winrate Analyse","Champion Tier List"]:
         alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist()) if 'teamPosition' in df_all.columns else []
         selected_roles = st.multiselect("Kies Role(s)", options=alle_roles, default=alle_roles)
     else:
@@ -99,6 +100,143 @@ if 'teamPosition' in df_all.columns and not selected_roles:
     st.warning("Selecteer minimaal een role in de sidebar om data te bekijken.")
     st.stop()
 
+elif selected_analyse == "Champion Tier List":
+    st.subheader("Champion Tier List")
+    st.info("ℹ️ Ontdek de beste champions voor jouw role op basis van winrate, KDA en populariteit.")
+
+    # --- ROLE SELECTOR ---
+    role_map_tierlist = {
+        "TOP": "TOP",
+        "JUNGLE": "JUNGLE",
+        "MID": "MIDDLE",
+        "BOTTOM": "BOTTOM",
+        "SUPPORT": "UTILITY"
+    }
+    selected_role_display_tl = st.radio(
+        "Kies jouw role",
+        options=list(role_map_tierlist.keys()),
+        horizontal=True
+    )
+    selected_role_tl = role_map_tierlist[selected_role_display_tl]
+    df_role_tl = df_filtered[df_filtered['teamPosition'] == selected_role_tl]
+
+    if df_role_tl.empty:
+        st.warning("Geen data beschikbaar voor deze role en tier selectie.")
+        st.stop()
+
+    # --- GEWICHTEN SLIDERS ---
+    st.markdown("**Stel je eigen gewichten in:**")
+    col1, col2 = st.columns(2)
+    with col1:
+        gewicht_winrate = st.slider("🏆 Winrate gewicht (%)", 0, 100, 50, step=5)
+        gewicht_kda = st.slider("⚔️ KDA gewicht (%)", 0, 100 - gewicht_winrate, 25, step=5)
+    with col2:
+        gewicht_populariteit = 100 - gewicht_winrate - gewicht_kda
+        st.metric("🎮 Populariteit gewicht", f"{gewicht_populariteit}%")
+        st.caption("Wordt automatisch berekend op basis van de andere twee sliders.")
+
+    # --- MINIMALE GAMES FILTER ---
+    min_games_tl = st.slider("Minimaal aantal games per champion", min_value=10, max_value=50, value=10, step=5)
+
+    # --- SCORE BEREKENING ---
+    required_cols = {'championName', 'win', 'kills', 'deaths', 'assists'}
+    missing = required_cols - set(df_role_tl.columns)
+    if missing:
+        st.warning(f"Ontbrekende kolommen: {', '.join(missing)}")
+        st.stop()
+
+    # Bereken winrate, kda en populariteit per champion
+    champ_df = (
+        df_role_tl.groupby('championName')
+        .agg(
+            winrate=('win', 'mean'),
+            games=('win', 'count'),
+            kills=('kills', 'mean'),
+            deaths=('deaths', 'mean'),
+            assists=('assists', 'mean')
+        )
+        .reset_index()
+    )
+    champ_df = champ_df[champ_df['games'] >= min_games_tl]
+    champ_df['kda'] = ((champ_df['kills'] + champ_df['assists']) / champ_df['deaths'].clip(lower=1)).round(2)
+    champ_df['winrate'] = (champ_df['winrate'] * 100).round(1)
+
+    if champ_df.empty:
+        st.warning("Niet genoeg data voor de huidige instellingen. Verlaag de minimale games filter.")
+        st.stop()
+
+    # Normaliseer alle metrics naar 0-100
+    def normalize(series):
+        min_val = series.min()
+        max_val = series.max()
+        if max_val == min_val:
+            return pd.Series([50] * len(series), index=series.index)
+        return ((series - min_val) / (max_val - min_val) * 100).round(1)
+
+    champ_df['winrate_norm'] = normalize(champ_df['winrate'])
+    champ_df['kda_norm'] = normalize(champ_df['kda'])
+    champ_df['populariteit_norm'] = normalize(champ_df['games'])
+
+    # Gewogen score berekenen
+    champ_df['score'] = (
+        (champ_df['winrate_norm'] * gewicht_winrate / 100) +
+        (champ_df['kda_norm'] * gewicht_kda / 100) +
+        (champ_df['populariteit_norm'] * gewicht_populariteit / 100)
+    ).round(1)
+
+    # Tier toewijzen op basis van absolute score (optie B)
+    def assign_tier(score):
+        if score >= 80:
+            return 'S'
+        elif score >= 60:
+            return 'A'
+        elif score >= 40:
+            return 'B'
+        else:
+            return 'C'
+
+    champ_df['tier'] = champ_df['score'].apply(assign_tier)
+
+    # --- TIER LIST WEERGAVE ---
+    tier_colors = {'S': '🟡', 'A': '🟢', 'B': '🔵', 'C': '🔴'}
+    tier_labels = {
+        'S': 'S Tier — Dominante picks, hoog in alles',
+        'A': 'A Tier — Sterke picks, solide keuze',
+        'B': 'B Tier — Gemiddelde picks, situationeel',
+        'C': 'C Tier — Zwakke picks, vermijd indien mogelijk'
+    }
+
+    for tier in ['S', 'A', 'B', 'C']:
+        tier_champs = champ_df[champ_df['tier'] == tier].sort_values('score', ascending=False)
+        if tier_champs.empty:
+            continue
+
+        st.markdown(f"### {tier_colors[tier]} {tier_labels[tier]}")
+        cols = st.columns(min(len(tier_champs), 5))
+        for i, (_, row) in enumerate(tier_champs.iterrows()):
+            with cols[i % 5]:
+                st.metric(
+                    label=row['championName'],
+                    value=f"{row['score']}",
+                    delta=f"{row['winrate']}% WR"
+                )
+                st.caption(f"KDA: {row['kda']} | Games: {int(row['games'])}")
+        st.markdown("---")
+
+    # --- DETAIL TABEL ---
+    st.subheader("Volledige ranking")
+    tabel_df = champ_df[['tier', 'championName', 'score', 'winrate', 'kda', 'games']].sort_values('score', ascending=False)
+    tabel_df = tabel_df.rename(columns={
+        'tier': 'Tier',
+        'championName': 'Champion',
+        'score': 'Score',
+        'winrate': 'Winrate (%)',
+        'kda': 'KDA',
+        'games': 'Games'
+    })
+    tabel_df['Games'] = tabel_df['Games'].astype(int)
+    st.dataframe(tabel_df, use_container_width=True, hide_index=True)
+    st.caption(f"Gebaseerd op {len(df_role_tl):,} games als {selected_role_display_tl} in {', '.join(selected_tiers)}.")
 # --- WINRATE ---
 if selected_analyse == "Winrate per Champion":
     st.subheader("Winrate per Champion")
