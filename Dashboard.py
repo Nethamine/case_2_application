@@ -305,7 +305,7 @@ elif selected_analyse == "Counterpick Analyse":
     st.info("ℹ️ Kies een role en een champion om te zien welke champions de hoogste winrate hebben tegen jouw keuze.")
 
     # Role selector (alleen TOP en MID)
-    counterpick_role = st.radio(
+    role_display = st.radio(
         "Kies een role",
         options=["TOP", "MID"],
         horizontal=True
