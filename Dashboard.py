@@ -41,13 +41,7 @@ with st.sidebar:
         selected_roles = alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist())
     
 
-        df_role_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
-        if selected_roles:
-            df_role_filtered = df_role_filtered[df_role_filtered['teamPosition'].isin(selected_roles)]
-        champ_counts = df_role_filtered['championName'].value_counts()
-    else:
-        duration_range = None
-        selected_champs = []
+
 if selected_analyse == "🏠 Home":
     st.title("League of Legends Ranked Dashboard")
     st.markdown(f"*Gebaseerd op **{len(df_all):,} games** uit Challenger, Grandmaster en Master (EUW)*")
