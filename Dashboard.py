@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-df_chal = pd.read_csv("challenger_matches_useful.csv")
-df_gm = pd.read_csv("grandmaster_matches_useful.csv")
-df_m = pd.read_csv("master_matches_useful.csv")
+df_chal = pd.read_csv("data/challenger_matches_useful.csv")
+df_gm = pd.read_csv("data/grandmaster_matches_useful.csv")
+df_m = pd.read_csv("data/master_matches_useful.csv")
 df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
 
 # --- SIDEBAR ---

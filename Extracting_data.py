@@ -1,12 +1,15 @@
 import requests
 import pandas as pd
 import time
+import os
 
 API_KEY = 'Jouw API key'
 REGION = 'euw1'
 
 MAX_PUUIDS = 100
 MATCHS_PER_PUUID = 10
+OUTPUT_DIR = "data"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 REQUESTS_PER_SECOND = 20
 REQUESTS_PER_2_MIN = 100
@@ -129,8 +132,11 @@ def collect_tier_data(tier_name, tier_endpoint):
                     p_flat['tier'] = tier_name
                     all_participants.append(p_flat)
 
+    # Dataframe maken
     df = pd.concat(all_participants, ignore_index=True) if all_participants else pd.DataFrame()
-    filename = f"{tier_name.lower()}_matches_useful.csv"
+
+    # Bestand opslaan in data map
+    filename = os.path.join(OUTPUT_DIR, f"{tier_name.lower()}_matches_useful.csv")
     df.to_csv(filename, index=False)
 
     print(f"\n{tier_name} klaar.")
