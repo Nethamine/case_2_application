@@ -30,7 +30,17 @@ with st.sidebar:
     alle_tiers = sorted(df_all['tier'].dropna().unique().tolist())
     selected_tiers = st.multiselect("Kies Tier(s)/Rank(s)", options=alle_tiers, default=alle_tiers)
 
-   
+    if selected_analyse not in ["Counterpick Analyse", "Vision & Winrate Analyse", "Champion Tier List","Winrate vs Champion Level", "Home"]:
+        alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist()) if 'teamPosition' in df_all.columns else []
+        rolle_labels = [role_display_map.get(r, r) for r in alle_roles]
+        selected_role_labels = st.multiselect("Kies Role(s)", options=rolle_labels, default=rolle_labels)
+    # Vertaal terug naar de echte namen voor filtering
+        reverse_map = {v: k for k, v in role_display_map.items()}
+        selected_roles = [reverse_map.get(r, r) for r in selected_role_labels]
+    else:
+        selected_roles = alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist())
+    
+
 
 if selected_analyse == "🏠 Home":
     st.title("League of Legends Ranked Dashboard")
