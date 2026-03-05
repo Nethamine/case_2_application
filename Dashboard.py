@@ -62,20 +62,15 @@ if selected_analyse == "🏠 Home":
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("🏆 **Winrate per Champion**")
-        st.caption("Welke champions hebben de beste winrate in de hoogste ranks?")
+        st.markdown("🏆 **Champion Tier List**")
+        st.caption("Ontdek de beste champions voor jouw role op basis van jouw eigen prioriteiten.")
         st.markdown("⚔️ **Counterpick Analyse**")
-        st.caption("Welke champion moet je kiezen om jouw tegenstander te counteren?")
-        st.markdown("📈 **KDA per Champion**")
-        st.caption("0/10 of 10/0? Ontdek wie jij moet spelen om je KDA scherp te houden")
-        st.markdown("🎮 **Games gespeeld per Champion**")
-        st.caption("Ontdek de meest populaire picks in hoge ranks!")
+        st.caption("Welke champion moet je kiezen om jouw tegenstander te kunnen counteren.")
     with col2:
         st.markdown("👁️ **Vision & Winrate Analyse**")
-        st.caption("Hoeveel vision hebben winnende spelers in jouw role?")
+        st.caption("Wards win games. Ontdek hoeveel vision winnende spelers plaatsen in jouw role.")
         st.markdown("📊 **Winrate vs Champion Level**")
         st.caption("Scale, scale, scale! Wie moet je spelen om later unkillable te worden?")
-
     st.markdown("---")
     st.subheader("Hoe gebruik je dit dashboard?")
     st.markdown("""
@@ -83,7 +78,7 @@ if selected_analyse == "🏠 Home":
     2. Gebruik de inzichten om jouw **ranked gameplay te verbeteren**
     """)
 
-    st.info("💡 Tip: Begin met de **Counterpick Analyse** als je direct wilt weten welke champion je moet picken in je volgende game.")
+    st.info("💡 Tip: Begin met de **Champion Tier List** als je direct wilt weten welke champion je moet picken in je volgende game.")
 # --- FILTERING ---
 df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
 if selected_roles and 'teamPosition' in df_filtered.columns:
