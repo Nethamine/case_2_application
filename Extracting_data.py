@@ -3,9 +3,7 @@ import time
 import csv
 import requests
 
-# -----------------------
 # Config
-# -----------------------
 API_KEY = "Input eigen API key"
 
 PLATFORM_REGION = "euw1"   # league-v4
