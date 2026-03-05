@@ -310,7 +310,8 @@ elif selected_analyse == "Counterpick Analyse":
         options=["TOP", "MID"],
         horizontal=True
     )
-
+    role_map = {"TOP": "TOP", "MID": "MIDDLE"}
+    counterpick_role = role_map[role_display]
     # Bouw counterpick data op
     @st.cache_data
     def build_counterpick_df(df, role):
