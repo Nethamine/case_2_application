@@ -53,7 +53,7 @@ if selected_analyse == "🏠 Home":
     
     st.markdown("""
     > Wil jij meer ranked games winnen? Dit dashboard analyseert data van de beste spelers op EUW 
-    en vertaalt dat naar inzichten waar jij wat aan hebt. Van de beste counterpicks tot hoeveel vision 
+    en vertaalt dat naar inzichten waar jij wat aan hebt. Van champion tier lists, de beste counterpicks, tot hoeveel vision 
     jij nodig hebt om de kans op winst te vergroten!.
     """)
 
