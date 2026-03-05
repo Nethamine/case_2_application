@@ -15,9 +15,6 @@ with st.sidebar:
     analyse_opties = {
         "🏠 Home": "home",
         "Champion Tier List": "tier_list",
-        "Winrate per Champion": "winrate",
-        "Games gespeeld per Champion": "games_played",
-        "KDA per Champion": "kda",
         "Winrate vs Champion Level": "champ_level_winrate",
         "Vision & Winrate Analyse": "vision_winrate",
         "Counterpick Analyse": "counterpick",
