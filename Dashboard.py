@@ -40,20 +40,11 @@ with st.sidebar:
     else:
         selected_roles = alle_roles = sorted(df_all['teamPosition'].dropna().unique().tolist())
     
-    if selected_analyse == "Winrate vs Champion Level" and 'champLevel' in df_all.columns:
-        min_dur = int(df_all['champLevel'].min())
-        max_dur = 20
-        duration_range = st.slider(
-            "Filter op Champion Level",
-            min_value=min_dur, max_value=max_dur,
-            value=(min_dur, max_dur), step=1
-        )
+
         df_role_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
         if selected_roles:
             df_role_filtered = df_role_filtered[df_role_filtered['teamPosition'].isin(selected_roles)]
         champ_counts = df_role_filtered['championName'].value_counts()
-        alle_champs = sorted(champ_counts[champ_counts >= 10].index.tolist())
-        selected_champs = st.multiselect("Filter op Champion(s)", options=alle_champs, default=[])
     else:
         duration_range = None
         selected_champs = []
@@ -241,139 +232,101 @@ elif selected_analyse == "Champion Tier List":
     st.caption(f"Gebaseerd op {len(df_role_tl):,} games als {selected_role_display_tl} in {', '.join(selected_tiers)}.")
 
 elif selected_analyse == "Winrate vs Champion Level":
-    st.subheader("Winrate vs Champion Level Verschil")
-    st.info("ℹ️ Hoe groter jouw level lead op je tegenstander, hoe groter je kans op winnen.")
-
-    # --- ROLE SELECTOR ---
-    role_map_champlevel = {
-        "TOP": "TOP",
-        "JUNGLE": "JUNGLE",
-        "MID": "MIDDLE",
-        "BOTTOM": "BOTTOM",
-        "SUPPORT": "UTILITY"
-    }
-    selected_role_display_cl = st.radio(
-        "Kies jouw role",
-        options=list(role_map_champlevel.keys()),
-        horizontal=True
-    )
-    selected_role_cl = role_map_champlevel[selected_role_display_cl]
-
-    # --- TRENDLIJN CHECKBOX ---
-    show_trendline = st.checkbox("Toon trendlijn", value=False)
+    st.subheader("Winrate vs Champion Level")
+    st.info("ℹ️ Alleen champions met minimaal **10 gespeelde games** worden getoond.")
 
     if 'champLevel' in df_filtered.columns and 'win' in df_filtered.columns:
 
-        @st.cache_data
-        def build_champlevel_df(df, role):
-            matchup_data = []
-            for match_id, match_group in df.groupby('match_id'):
-                role_group = match_group[match_group['teamPosition'] == role]
-                if len(role_group['teamId'].unique()) != 2:
-                    continue
-                teams = role_group.groupby('teamId')
-                team_ids = list(teams.groups.keys())
-                p1 = teams.get_group(team_ids[0]).iloc[0]
-                p2 = teams.get_group(team_ids[1]).iloc[0]
-                matchup_data.append({
-                    'level_verschil': int(p1['champLevel']) - int(p2['champLevel']),
-                    'win': int(p1['win'])
-                })
-                matchup_data.append({
-                    'level_verschil': int(p2['champLevel']) - int(p1['champLevel']),
-                    'win': int(p2['win'])
-                })
-            return pd.DataFrame(matchup_data)
-
+        # --- ROLE SELECTOR ---
+        role_map_champlevel = {
+            "TOP": "TOP",
+            "JUNGLE": "JUNGLE",
+            "MID": "MIDDLE",
+            "BOTTOM": "BOTTOM",
+            "SUPPORT": "UTILITY"
+        }
+        selected_role_display_cl = st.radio(
+            "Kies jouw role",
+            options=list(role_map_champlevel.keys()),
+            horizontal=True
+        )
+        selected_role_cl = role_map_champlevel[selected_role_display_cl]
         df_role_cl = df_filtered[df_filtered['teamPosition'] == selected_role_cl]
-        matchup_df = build_champlevel_df(df_role_cl, selected_role_cl)
 
-        if matchup_df.empty:
-            st.warning("Geen data beschikbaar voor deze role.")
+        # --- CHAMPION FILTER OP DE TAB ---
+        champ_counts = df_role_cl['championName'].value_counts()
+        alle_champs_cl = sorted(champ_counts[champ_counts >= 10].index.tolist())
+        selected_champs = st.multiselect(
+            "Filter op Champion(s)",
+            options=alle_champs_cl,
+            default=[]
+        )
+
+        # --- CHAMPION LEVEL SLIDER OP DE TAB ---
+        min_dur = int(df_role_cl['champLevel'].min())
+        max_dur = 20
+        duration_range = st.slider(
+            "Filter op Champion Level",
+            min_value=min_dur, max_value=max_dur,
+            value=(min_dur, max_dur), step=1
+        )
+
+        # --- FILTERING ---
+        df_dur = df_role_cl[
+            (df_role_cl['champLevel'] >= duration_range[0]) &
+            (df_role_cl['champLevel'] <= duration_range[1])
+        ].copy()
+
+        champ_counts = df_dur['championName'].value_counts()
+        uitgesloten1 = df_dur[~df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]['championName'].nunique()
+        df_dur = df_dur[df_dur['championName'].isin(champ_counts[champ_counts >= 10].index)]
+
+        if uitgesloten1 > 0:
+            st.caption(f"{uitgesloten1} champion(s) uitgesloten wegens minder dan 10 games gespeeld.")
+
+        if selected_champs:
+            df_dur = df_dur[df_dur['championName'].isin(selected_champs)]
+
+        df_dur = df_dur.rename(columns={'champLevel': 'champ_level'})
+
+        if df_dur.empty:
+            st.warning("Geen data beschikbaar voor de huidige selectie.")
         else:
-            # --- AGGREGEREN ---
-            line_df = (
-                matchup_df.groupby('level_verschil')['win']
-                .agg(winrate='mean', games='count')
-                .reset_index()
-            )
-            line_df['winrate'] = (line_df['winrate'] * 100).round(1)
-
-            # Minimaal 50 games per datapunt
-            uitgesloten = line_df[line_df['games'] < 50].shape[0]
-            line_df = line_df[line_df['games'] >= 50]
-
-            # Symmetrisch: -10 t/m +10
-            line_df = line_df[
-                (line_df['level_verschil'] >= -10) &
-                (line_df['level_verschil'] <= 10)
-            ]
-
-            if uitgesloten > 0:
-                st.caption(f"{uitgesloten} level verschil punt(en) uitgesloten wegens minder dan 50 games.")
-
-            if line_df.empty:
-                st.warning("Niet genoeg data beschikbaar voor deze role.")
-            else:
-                # --- LIJN GRAFIEK ---
-                if show_trendline:
-                    fig = px.scatter(
-                        line_df,
-                        x='level_verschil',
-                        y='winrate',
-                        trendline='ols',
-                        trendline_color_override='royalblue',
-                        title=f"Winrate vs Champion Level Verschil — {selected_role_display_cl} ({', '.join(selected_tiers)})",
-                        labels={
-                            'level_verschil': 'Level Verschil (jij - tegenstander)',
-                            'winrate': 'Winrate (%)'
-                        },
-                        hover_data={'games': True}
-                    )
-                    # Voeg de lijn toe bovenop de trendlijn
-                    fig.add_scatter(
-                        x=line_df['level_verschil'],
-                        y=line_df['winrate'],
-                        mode='lines+markers',
-                        name='Winrate',
-                        line=dict(color='rgba(100,100,100,0.4)'),
-                        marker=dict(color='rgba(100,100,100,0.4)')
-                    )
-                else:
-                    fig = px.line(
-                        line_df,
-                        x='level_verschil',
-                        y='winrate',
-                        title=f"Winrate vs Champion Level Verschil — {selected_role_display_cl} ({', '.join(selected_tiers)})",
-                        labels={
-                            'level_verschil': 'Level Verschil (jij - tegenstander)',
-                            'winrate': 'Winrate (%)'
-                        },
-                        markers=True,
-                        hover_data={'games': True}
-                    )
-                    fig.update_traces(line_color='royalblue')
-
-                fig.add_vline(x=0, line_dash="dash", line_color="gray", annotation_text="Gelijk niveau")
-                fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
-                fig.update_layout(
-                    xaxis=dict(tickmode='linear', tick0=-10, dtick=1),
-                    yaxis_range=[30, 70],
+            if selected_champs:
+                dur_df = (
+                    df_dur.groupby(['champ_level', 'championName'])
+                    .agg(winrate=('win', 'mean'), games=('win', 'count'))
+                    .reset_index()
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                dur_df['winrate'] = (dur_df['winrate'] * 100).round(1)
+                fig = px.line(
+                    dur_df, x='champ_level', y='winrate',
+                    color='championName',
+                    title=f"Winrate per Champion Level — {selected_role_display_cl} ({', '.join(selected_tiers)})",
+                    labels={'champ_level': 'Champion Level', 'winrate': 'Winrate (%)', 'championName': 'Champion'},
+                    markers=True
+                )
+            else:
+                dur_df = (
+                    df_dur.groupby('champ_level')
+                    .agg(winrate=('win', 'mean'), games=('win', 'count'))
+                    .reset_index()
+                )
+                dur_df['winrate'] = (dur_df['winrate'] * 100).round(1)
+                fig = px.line(
+                    dur_df, x='champ_level', y='winrate',
+                    title=f"Winrate per Champion Level — {selected_role_display_cl} ({', '.join(selected_tiers)})",
+                    labels={'champ_level': 'Champion Level', 'winrate': 'Winrate (%)'},
+                    markers=True
+                )
+                fig.update_traces(line_color='royalblue')
 
-                # --- INZICHT TABEL ---
-                st.subheader(f"Wat betekent een level lead als {selected_role_display_cl}?")
-                inzicht_df = line_df[['level_verschil', 'winrate', 'games']].rename(columns={
-                    'level_verschil': 'Level Verschil',
-                    'winrate': 'Winrate (%)',
-                    'games': 'Aantal Games'
-                }).sort_values('Level Verschil')
-                st.dataframe(inzicht_df, use_container_width=True, hide_index=True)
-                st.caption(f"Gebaseerd op {len(matchup_df):,} games als {selected_role_display_cl}. Alleen datapunten met minimaal 50 games worden getoond.")
+            fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption(f"Gebaseerd op {len(df_dur):,} games als {selected_role_display_cl} met champion level tussen {duration_range[0]} en {duration_range[1]}.")
     else:
         st.warning("Kolom 'champLevel' of 'win' niet gevonden in de data.")
-                
+
 elif selected_analyse == "Vision & Winrate Analyse":
     st.subheader("Vision & Winrate Analyse")
     st.info("ℹ️ Ontdek hoeveel vision jij nodig hebt om zo veel mogelijk games te winnen in jouw role.")
