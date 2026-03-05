@@ -242,7 +242,7 @@ elif selected_analyse == "Champion Tier List":
 
 elif selected_analyse == "Winrate vs Champion Level":
     st.subheader("Winrate vs Champion Level Verschil")
-    st.info("ℹ️ Hoe groter jouw level lead op je tegenstander, hoe groter je kans op winnen. Grotere bubbles = meer games = betrouwbaarder.")
+    st.info("ℹ️ Hoe groter jouw level lead op je tegenstander, hoe groter je kans op winnen.")
 
     # --- ROLE SELECTOR ---
     role_map_champlevel = {
@@ -259,9 +259,11 @@ elif selected_analyse == "Winrate vs Champion Level":
     )
     selected_role_cl = role_map_champlevel[selected_role_display_cl]
 
+    # --- TRENDLIJN CHECKBOX ---
+    show_trendline = st.checkbox("Toon trendlijn", value=False)
+
     if 'champLevel' in df_filtered.columns and 'win' in df_filtered.columns:
 
-        # --- MATCHUP DATA BOUWEN ---
         @st.cache_data
         def build_champlevel_df(df, role):
             matchup_data = []
@@ -273,13 +275,10 @@ elif selected_analyse == "Winrate vs Champion Level":
                 team_ids = list(teams.groups.keys())
                 p1 = teams.get_group(team_ids[0]).iloc[0]
                 p2 = teams.get_group(team_ids[1]).iloc[0]
-
-                # Vanuit p1 perspectief
                 matchup_data.append({
                     'level_verschil': int(p1['champLevel']) - int(p2['champLevel']),
                     'win': int(p1['win'])
                 })
-                # Vanuit p2 perspectief
                 matchup_data.append({
                     'level_verschil': int(p2['champLevel']) - int(p1['champLevel']),
                     'win': int(p2['win'])
@@ -293,72 +292,88 @@ elif selected_analyse == "Winrate vs Champion Level":
             st.warning("Geen data beschikbaar voor deze role.")
         else:
             # --- AGGREGEREN ---
-            bubble_df = (
+            line_df = (
                 matchup_df.groupby('level_verschil')['win']
                 .agg(winrate='mean', games='count')
                 .reset_index()
             )
-            bubble_df['winrate'] = (bubble_df['winrate'] * 100).round(1)
+            line_df['winrate'] = (line_df['winrate'] * 100).round(1)
 
-            # Alleen betrouwbare datapunten (min 50 games)
-            uitgesloten = bubble_df[bubble_df['games'] < 50].shape[0]
-            bubble_df = bubble_df[bubble_df['games'] >= 50]
+            # Minimaal 50 games per datapunt
+            uitgesloten = line_df[line_df['games'] < 50].shape[0]
+            line_df = line_df[line_df['games'] >= 50]
 
             # Symmetrisch: -10 t/m +10
-            bubble_df = bubble_df[
-                (bubble_df['level_verschil'] >= -10) &
-                (bubble_df['level_verschil'] <= 10)
+            line_df = line_df[
+                (line_df['level_verschil'] >= -10) &
+                (line_df['level_verschil'] <= 10)
             ]
 
             if uitgesloten > 0:
                 st.caption(f"{uitgesloten} level verschil punt(en) uitgesloten wegens minder dan 50 games.")
 
-            if bubble_df.empty:
+            if line_df.empty:
                 st.warning("Niet genoeg data beschikbaar voor deze role.")
             else:
-                fig = px.scatter(
-                    bubble_df,
-                    x='level_verschil',
-                    y='winrate',
-                    size='games',
-                    color='winrate',
-                    color_continuous_scale='RdYlGn',
-                    color_continuous_midpoint=50,
-                    size_max=60,
-                    title=f"Winrate vs Champion Level Verschil — {selected_role_display_cl} ({', '.join(selected_tiers)})",
-                    labels={
-                        'level_verschil': 'Level Verschil (jij - tegenstander)',
-                        'winrate': 'Winrate (%)',
-                        'games': 'Aantal Games'
-                    },
-                    hover_data={'games': True, 'winrate': True, 'level_verschil': True}
-                )
+                # --- LIJN GRAFIEK ---
+                if show_trendline:
+                    fig = px.scatter(
+                        line_df,
+                        x='level_verschil',
+                        y='winrate',
+                        trendline='ols',
+                        trendline_color_override='royalblue',
+                        title=f"Winrate vs Champion Level Verschil — {selected_role_display_cl} ({', '.join(selected_tiers)})",
+                        labels={
+                            'level_verschil': 'Level Verschil (jij - tegenstander)',
+                            'winrate': 'Winrate (%)'
+                        },
+                        hover_data={'games': True}
+                    )
+                    # Voeg de lijn toe bovenop de trendlijn
+                    fig.add_scatter(
+                        x=line_df['level_verschil'],
+                        y=line_df['winrate'],
+                        mode='lines+markers',
+                        name='Winrate',
+                        line=dict(color='rgba(100,100,100,0.4)'),
+                        marker=dict(color='rgba(100,100,100,0.4)')
+                    )
+                else:
+                    fig = px.line(
+                        line_df,
+                        x='level_verschil',
+                        y='winrate',
+                        title=f"Winrate vs Champion Level Verschil — {selected_role_display_cl} ({', '.join(selected_tiers)})",
+                        labels={
+                            'level_verschil': 'Level Verschil (jij - tegenstander)',
+                            'winrate': 'Winrate (%)'
+                        },
+                        markers=True,
+                        hover_data={'games': True}
+                    )
+                    fig.update_traces(line_color='royalblue')
 
-                # Referentielijnen
                 fig.add_vline(x=0, line_dash="dash", line_color="gray", annotation_text="Gelijk niveau")
                 fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
-
                 fig.update_layout(
                     xaxis=dict(tickmode='linear', tick0=-10, dtick=1),
                     yaxis_range=[30, 70],
-                    hovermode="closest"
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
                 # --- INZICHT TABEL ---
                 st.subheader(f"Wat betekent een level lead als {selected_role_display_cl}?")
-                inzicht_df = bubble_df[['level_verschil', 'winrate', 'games']].copy()
-                inzicht_df = inzicht_df.rename(columns={
+                inzicht_df = line_df[['level_verschil', 'winrate', 'games']].rename(columns={
                     'level_verschil': 'Level Verschil',
                     'winrate': 'Winrate (%)',
                     'games': 'Aantal Games'
-                })
-                inzicht_df = inzicht_df.sort_values('Level Verschil')
+                }).sort_values('Level Verschil')
                 st.dataframe(inzicht_df, use_container_width=True, hide_index=True)
                 st.caption(f"Gebaseerd op {len(matchup_df):,} games als {selected_role_display_cl}. Alleen datapunten met minimaal 50 games worden getoond.")
     else:
         st.warning("Kolom 'champLevel' of 'win' niet gevonden in de data.")
-        
+                
 elif selected_analyse == "Vision & Winrate Analyse":
     st.subheader("Vision & Winrate Analyse")
     st.info("ℹ️ Ontdek hoeveel vision jij nodig hebt om zo veel mogelijk games te winnen in jouw role.")
