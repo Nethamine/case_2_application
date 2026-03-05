@@ -207,7 +207,7 @@ elif selected_analyse == "Champion Tier List":
     }
 
     for tier in ['S', 'A', 'B', 'C']:
-        tier_champs = champ_df[champ_df['tier'] == tier].sort_values('score', ascending=False)
+        tier_champs = champ_df[champ_df['tier'] == tier].sort_values('score', ascending=False).head(3)
         if tier_champs.empty:
             continue
 
