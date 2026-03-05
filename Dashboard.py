@@ -246,8 +246,8 @@ elif selected_analyse == "Vision & Winrate Analyse":
 
     # --- DATA BOUWEN ---
     required_cols = {'visionScore', 'wardsPlaced', 'wardsKilled', 'detectorWardsPlaced', 'win'}
-    if not required_cols.issubset(df_filtered.columns):
-        missing = required_cols - set(df_filtered.columns)
+    missing = required_cols - set(df_filtered.columns)
+    if missing:
         st.warning(f"Ontbrekende kolommen: {', '.join(missing)}")
         st.stop()
 
