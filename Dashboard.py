@@ -18,6 +18,7 @@ with st.sidebar:
         "KDA per Champion": "kda",
         "Winrate vs Champion Level": "champ_level_winrate",
         "Gold & Minions vs Winrate": "gold_minions_winrate",
+        "Counterpick Analyse": "counterpick",
     }
     selected_analyse = st.selectbox("Kies analyse", list(analyse_opties.keys()))
 
@@ -297,3 +298,96 @@ elif selected_analyse == "Gold & Minions vs Winrate":
     else:
         missing = required_cols - set(df_filtered.columns)
         st.warning(f"Ontbrekende kolommen: {', '.join(missing)}")
+
+# --- COUNTERPICK ANALYSE ---
+elif selected_analyse == "Counterpick Analyse":
+    st.subheader("Counterpick Analyse")
+    st.info("ℹ️ Kies een role en een champion om te zien welke champions de hoogste winrate hebben tegen jouw keuze.")
+
+    # Role selector (alleen TOP en MID)
+    counterpick_role = st.radio(
+        "Kies een role",
+        options=["TOP", "MID"],
+        horizontal=True
+    )
+
+    # Bouw counterpick data op
+    @st.cache_data
+    def build_counterpick_df(df, role):
+        counter_data = []
+        for match_id, match_group in df.groupby('match_id'):
+            role_group = match_group[match_group['teamPosition'] == role]
+            if len(role_group['teamId'].unique()) != 2:
+                continue
+            teams = role_group.groupby('teamId')
+            team_ids = list(teams.groups.keys())
+            p1 = teams.get_group(team_ids[0]).iloc[0]
+            p2 = teams.get_group(team_ids[1]).iloc[0]
+            counter_data.append({'champion': p1['championName'], 'vs': p2['championName'], 'win': int(p1['win'])})
+            counter_data.append({'champion': p2['championName'], 'vs': p1['championName'], 'win': int(p2['win'])})
+        return pd.DataFrame(counter_data)
+
+    df_role = df_filtered[df_filtered['teamPosition'] == counterpick_role]
+    counter_df = build_counterpick_df(df_role, counterpick_role)
+
+    if counter_df.empty:
+        st.warning("Geen counterpick data beschikbaar voor de huidige selectie.")
+    else:
+        # Alle champions met genoeg games als "gespeelde champion"
+        champ_game_counts = counter_df.groupby('vs')['win'].count()
+        beschikbare_champs = sorted(champ_game_counts[champ_game_counts >= 10].index.tolist())
+
+        selected_enemy_champ = st.selectbox(
+            f"Kies de champion van de tegenstander ({counterpick_role})",
+            options=beschikbare_champs
+        )
+
+        # Filter: alle champions die tegen selected_enemy_champ hebben gespeeld
+        matchup_df = counter_df[counter_df['vs'] == selected_enemy_champ].copy()
+
+        # Minimale games filter
+        min_games_cp = st.slider("Minimaal aantal games per matchup", min_value=1, max_value=20, value=5, step=1)
+
+        matchup_stats = (
+            matchup_df.groupby('champion')['win']
+            .agg(winrate='mean', games='count')
+            .reset_index()
+        )
+        matchup_stats = matchup_stats[matchup_stats['games'] >= min_games_cp]
+        matchup_stats['winrate'] = (matchup_stats['winrate'] * 100).round(1)
+        matchup_stats = matchup_stats.sort_values('winrate', ascending=False)
+
+        if matchup_stats.empty:
+            st.warning("Niet genoeg data voor de huidige instelling. Verlaag de minimale games filter.")
+        else:
+            st.markdown(f"### Beste counters tegen **{selected_enemy_champ}** ({counterpick_role})")
+            st.caption(f"Gebaseerd op {matchup_df.shape[0]:,} games | minimaal {min_games_cp} games per matchup")
+
+            # Kleur op winrate
+            fig = px.bar(
+                matchup_stats,
+                x='champion',
+                y='winrate',
+                color='winrate',
+                text='winrate',
+                hover_data={'games': True},
+                color_continuous_scale='RdYlGn',
+                color_continuous_midpoint=50,
+                title=f"Winrate vs {selected_enemy_champ} — {counterpick_role} ({', '.join(selected_tiers)})",
+                labels={'champion': 'Jouw Champion', 'winrate': 'Winrate (%)'},
+            )
+            fig.update_traces(texttemplate='%{text}%', textposition='outside')
+            fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+            fig.update_layout(xaxis_tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Tabel eronder
+            st.dataframe(
+                matchup_stats.rename(columns={
+                    'champion': 'Jouw Champion',
+                    'winrate': 'Winrate (%)',
+                    'games': 'Games gespeeld'
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
