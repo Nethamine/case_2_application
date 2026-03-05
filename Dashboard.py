@@ -8,7 +8,7 @@ df_m = pd.read_csv("data/master_matches_useful.csv")
 df_all = pd.concat([df_chal, df_gm, df_m], ignore_index=True)
 
 # --- SIDEBAR ---
-st.title("League Data Dashboard")
+
 
 with st.sidebar:
     st.header("Filters")
@@ -55,8 +55,8 @@ if selected_analyse == "🏠 Home":
     
     st.markdown("""
     > Wil jij meer ranked games winnen? Dit dashboard analyseert data van de beste spelers op EUW 
-    en vertaalt dat naar concrete inzichten — van de beste counterpicks tot hoeveel vision 
-    jij nodig hebt om te winnen.
+    en vertaalt dat naar inzichten waar jij wat aan hebt. Van de beste counterpicks tot hoeveel vision 
+    jij nodig hebt om de kans op winst te vergroten!.
     """)
 
     st.markdown("---")
@@ -65,20 +65,18 @@ if selected_analyse == "🏠 Home":
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("🏆 **Winrate per Champion**")
-        st.caption("Welke champions hebben de hoogste winrate in jouw rank?")
+        st.caption("Welke champions hebben de beste winrate in de hoogste ranks?")
         st.markdown("⚔️ **Counterpick Analyse**")
-        st.caption("Welke champion moet je picken om een tegenstander te counteren?")
+        st.caption("Welke champion moet je kiezen om jouw tegenstander te counteren?")
         st.markdown("📈 **KDA per Champion**")
-        st.caption("Welke champions presteren het beste op kills, deaths en assists?")
+        st.caption("0/10 of 10/0? Ontdek wie jij moet spelen om je KDA scherp te houden")
         st.markdown("🎮 **Games gespeeld per Champion**")
-        st.caption("Welke champions worden het meest gespeeld in hoge ranks?")
+        st.caption("Ontdek de meest populaire picks in hoge ranks!")
     with col2:
         st.markdown("👁️ **Vision & Winrate Analyse**")
         st.caption("Hoeveel vision hebben winnende spelers in jouw role?")
-        st.markdown("💰 **Gold & Minions vs Winrate**")
-        st.caption("Hoe hangen gold en minions samen met winrate?")
         st.markdown("📊 **Winrate vs Champion Level**")
-        st.caption("Maakt een hoger champion level je kans op winnen groter?")
+        st.caption("Scale, scale, scale! Wie moet je spelen om later unkillable te worden?")
 
     st.markdown("---")
     st.subheader("Hoe gebruik je dit dashboard?")
