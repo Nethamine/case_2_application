@@ -300,7 +300,8 @@ elif selected_analyse == "Vision & Winrate Analyse":
 
     detail_df = pd.DataFrame(detail_rows).sort_values('Verschil', ascending=False)
     st.dataframe(detail_df, use_container_width=True, hide_index=True)
-    st.caption(f"Gebaseerd op {len(df_filtered):,} games.")rekende kolommen: {', '.join(missing)}")
+    st.warning(f"Ontbrekende kolommen: {', '.join(missing)}")
+    st.stop()
 
 # --- COUNTERPICK ANALYSE ---
 elif selected_analyse == "Counterpick Analyse":
