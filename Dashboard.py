@@ -13,6 +13,7 @@ st.title("League Data Dashboard")
 with st.sidebar:
     st.header("Filters")
     analyse_opties = {
+        "🏠 Home": "home",
         "Winrate per Champion": "winrate",
         "Games gespeeld per Champion": "games_played",
         "KDA per Champion": "kda",
@@ -48,7 +49,46 @@ with st.sidebar:
     else:
         duration_range = None
         selected_champs = []
+if selected_analyse == "🏠 Home":
+    st.title("League of Legends Ranked Dashboard")
+    st.markdown(f"*Gebaseerd op **{len(df_all):,} games** uit Challenger, Grandmaster en Master (EUW)*")
+    
+    st.markdown("""
+    > Wil jij meer ranked games winnen? Dit dashboard analyseert data van de beste spelers op EUW 
+    en vertaalt dat naar concrete inzichten — van de beste counterpicks tot hoeveel vision 
+    jij nodig hebt om te winnen.
+    """)
 
+    st.markdown("---")
+    st.subheader("Wat kun je hier vinden?")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("🏆 **Winrate per Champion**")
+        st.caption("Welke champions hebben de hoogste winrate in jouw rank?")
+        st.markdown("⚔️ **Counterpick Analyse**")
+        st.caption("Welke champion moet je picken om een tegenstander te counteren?")
+        st.markdown("📈 **KDA per Champion**")
+        st.caption("Welke champions presteren het beste op kills, deaths en assists?")
+        st.markdown("🎮 **Games gespeeld per Champion**")
+        st.caption("Welke champions worden het meest gespeeld in hoge ranks?")
+    with col2:
+        st.markdown("👁️ **Vision & Winrate Analyse**")
+        st.caption("Hoeveel vision hebben winnende spelers in jouw role?")
+        st.markdown("💰 **Gold & Minions vs Winrate**")
+        st.caption("Hoe hangen gold en minions samen met winrate?")
+        st.markdown("📊 **Winrate vs Champion Level**")
+        st.caption("Maakt een hoger champion level je kans op winnen groter?")
+
+    st.markdown("---")
+    st.subheader("Hoe gebruik je dit dashboard?")
+    st.markdown("""
+    1. Kies een **analyse** in de sidebar links
+    2. Filter op **rank** om jouw eigen rank te bekijken
+    3. Gebruik de inzichten om jouw **ranked gameplay te verbeteren**
+    """)
+
+    st.info("💡 Tip: Begin met de **Counterpick Analyse** als je direct wilt weten welke champion je moet picken in je volgende game.")
 # --- FILTERING ---
 df_filtered = df_all[df_all['tier'].isin(selected_tiers)] if selected_tiers else df_all
 if selected_roles and 'teamPosition' in df_filtered.columns:
