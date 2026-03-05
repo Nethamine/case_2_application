@@ -17,7 +17,7 @@ with st.sidebar:
         "Games gespeeld per Champion": "games_played",
         "KDA per Champion": "kda",
         "Winrate vs Champion Level": "champ_level_winrate",
-        "Gold & Minions vs Winrate": "gold_minions_winrate",
+        "Vision & Winrate Analyse": "vision_winrate",
         "Counterpick Analyse": "counterpick",
     }
     selected_analyse = st.selectbox("Kies analyse", list(analyse_opties.keys()))
@@ -208,99 +208,99 @@ elif selected_analyse == "Winrate vs Champion Level":
     else:
         st.warning("Kolom 'champLevel' of 'win' niet gevonden in de data.")
 
-# --- GOLD & MINIONS VS WINRATE ---
-elif selected_analyse == "Gold & Minions vs Winrate":
-    st.subheader("Gold & Minions vs Winrate per Champion")
-    required_cols = {'championName', 'goldEarned', 'totalMinionsKilled', 'win'}
-    if required_cols.issubset(df_filtered.columns):
+elif selected_analyse == "Vision & Winrate Analyse":
+    st.subheader("Vision & Winrate Analyse")
+    st.info("ℹ️ Vergelijk hoe verschillende vision metrics samenhangen met winrate.")
 
-        # Maak gold buckets
-        bucket_size = st.select_slider(
-            "Gold bucket grootte",
-            options=[500, 1000, 2000, 3000],
-            value=1000
-        )
-        min_sample = st.slider("Minimale sample size per bucket", min_value=1, max_value=20, value=5, step=1)
-        # Champion filter
-        champ_counts_gold = df_filtered[df_filtered['teamPosition'].isin(selected_roles)]['championName'].value_counts() if selected_roles else df_filtered['championName'].value_counts()
-        champs_gold = sorted(champ_counts_gold[champ_counts_gold >= 10].index.tolist())
-        selected_champs_gold = st.multiselect(
-            "Filter op Champion(s)",
-            options=champs_gold,
-            default=[]
-        )
+    # --- CHECKBOXES ---
+    st.markdown("**Kies metrics om te vergelijken:**")
+    col1, col2 = st.columns(2)
+    with col1:
+        show_vision = st.checkbox("Vision Score (totaal)", value=True)
+        show_wards_placed = st.checkbox("Wards Placed", value=False)
+    with col2:
+        show_wards_killed = st.checkbox("Wards Killed", value=False)
+        show_detector = st.checkbox("Control Wards Placed", value=False)
 
-        df_gold = df_filtered.copy()
-        if selected_champs_gold:
-            df_gold = df_gold[df_gold['championName'].isin(selected_champs_gold)]
+    selected_metrics = []
+    if show_vision:
+        selected_metrics.append(('visionScore', 'Vision Score'))
+    if show_wards_placed:
+        selected_metrics.append(('wardsPlaced', 'Wards Placed'))
+    if show_wards_killed:
+        selected_metrics.append(('wardsKilled', 'Wards Killed'))
+    if show_detector:
+        selected_metrics.append(('detectorWardsPlaced', 'Control Wards Placed'))
 
-        df_gold['gold_bucket'] = (df_gold['goldEarned'] // bucket_size * bucket_size).astype(int)
-        df_gold['gold_bucket_label'] = df_gold['gold_bucket'].apply(
-            lambda x: f"{x//1000}k-{(x+bucket_size)//1000}k"
-        )
+    if not selected_metrics:
+        st.warning("Selecteer minimaal één metric om de grafiek te tonen.")
+        st.stop()
 
-        if selected_champs_gold:
-            bucket_df = (
-                df_gold.groupby(['gold_bucket', 'championName'])
-                .agg(
-                    winrate=('win', 'mean'),
-                    games=('win', 'count'),
-                    gold_label=('gold_bucket_label', 'first')
-                )
-                .reset_index()
-                .sort_values('gold_bucket')
-            )
-            bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
-            uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
-            bucket_df = bucket_df[bucket_df['games'] >= min_sample]
+    # --- BUCKET GROOTTE ---
+    bucket_size = st.select_slider(
+        "Bucket grootte (hogere waarde = minder maar stabielere datapunten)",
+        options=[1, 2, 3, 5, 10],
+        value=3
+    )
+    min_games = st.slider("Minimaal aantal games per bucket", min_value=5, max_value=50, value=10, step=5)
 
-            if uitgesloten2 > 0:
-                st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
-
-            fig = px.line(
-                bucket_df, x='gold_label', y='winrate',
-                color='championName',
-                hover_data={'games': True},
-                title=f"Winrate per Gold Bucket per Champion ({', '.join(selected_tiers)})",
-                labels={'gold_label': 'Gold Earned', 'winrate': 'Winrate (%)', 'championName': 'Champion'},
-                markers=True
-            )
-        else:
-            bucket_df = (
-                df_gold.groupby('gold_bucket')
-                .agg(
-                    winrate=('win', 'mean'),
-                    games=('win', 'count'),
-                    minions=('totalMinionsKilled', 'mean'),
-                    gold_label=('gold_bucket_label', 'first')
-                )
-                .reset_index()
-                .sort_values('gold_bucket')
-            )
-            bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
-            bucket_df['minions'] = bucket_df['minions'].round(1)
-            uitgesloten2 = bucket_df[bucket_df['games'] < 10].shape[0]
-            bucket_df = bucket_df[bucket_df['games'] >= min_sample]
-
-            if uitgesloten2 > 0:
-                st.caption(f"{uitgesloten2} gold bucket(s) uitgesloten wegens minder dan 10 games.")
-
-            fig = px.bar(
-                bucket_df, x='gold_label', y='winrate',
-                color='winrate',
-                hover_data={'games': True, 'minions': True},
-                title=f"Winrate per Gold Bucket ({', '.join(selected_tiers)})",
-                labels={'gold_label': 'Gold Earned', 'winrate': 'Winrate (%)'},
-                color_continuous_scale='RdYlGn'
-            )
-
-        fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
-        st.plotly_chart(fig, use_container_width=True)
-        st.info("ℹ️ Hover over een bucket om het aantal games en gemiddeld aantal minions te zien.")
-
-    else:
+    # --- DATA BOUWEN ---
+    required_cols = {'visionScore', 'wardsPlaced', 'wardsKilled', 'detectorWardsPlaced', 'win'}
+    if not required_cols.issubset(df_filtered.columns):
         missing = required_cols - set(df_filtered.columns)
         st.warning(f"Ontbrekende kolommen: {', '.join(missing)}")
+        st.stop()
+
+    # Bouw een lijn per metric
+    fig = px.line(title=f"Vision Metrics vs Winrate ({', '.join(selected_tiers)})")
+    fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+
+    for col, label in selected_metrics:
+        df_metric = df_filtered[[col, 'win']].copy()
+        df_metric['bucket'] = (df_metric[col] // bucket_size * bucket_size).astype(int)
+
+        bucket_df = (
+            df_metric.groupby('bucket')['win']
+            .agg(winrate='mean', games='count')
+            .reset_index()
+        )
+        bucket_df = bucket_df[bucket_df['games'] >= min_games]
+        bucket_df['winrate'] = (bucket_df['winrate'] * 100).round(1)
+
+        fig.add_scatter(
+            x=bucket_df['bucket'],
+            y=bucket_df['winrate'],
+            mode='lines+markers',
+            name=label,
+            hovertemplate=f"<b>{label}</b><br>Waarde: %{{x}}<br>Winrate: %{{y}}%<br>Games: %{{customdata}}<extra></extra>",
+            customdata=bucket_df['games']
+        )
+
+    fig.update_layout(
+        xaxis_title="Metric waarde (gebucketed)",
+        yaxis_title="Winrate (%)",
+        yaxis_range=[30, 70],
+        legend_title="Metric",
+        hovermode="x unified"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # --- DETAIL TABEL ---
+    st.subheader("Gemiddelden per metric: Winnaars vs Verliezers")
+    detail_rows = []
+    for col, label in selected_metrics:
+        winners = df_filtered[df_filtered['win'] == 1][col].mean()
+        losers = df_filtered[df_filtered['win'] == 0][col].mean()
+        detail_rows.append({
+            'Metric': label,
+            'Gem. Winnaars': round(winners, 2),
+            'Gem. Verliezers': round(losers, 2),
+            'Verschil': round(winners - losers, 2)
+        })
+
+    detail_df = pd.DataFrame(detail_rows).sort_values('Verschil', ascending=False)
+    st.dataframe(detail_df, use_container_width=True, hide_index=True)
+    st.caption(f"Gebaseerd op {len(df_filtered):,} games.")rekende kolommen: {', '.join(missing)}")
 
 # --- COUNTERPICK ANALYSE ---
 elif selected_analyse == "Counterpick Analyse":
